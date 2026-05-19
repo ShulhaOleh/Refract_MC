@@ -109,7 +109,7 @@ function HeroCard({ instance, onLaunch, onEdit }: { instance: Instance; onLaunch
       <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.2 }}>{instance.name}</div>
         <div style={{ fontFamily: "'VT323',monospace", fontSize: 14, color: 'var(--ink-4)', letterSpacing: '.04em' }}>
-          MC {instance.mcVersion}
+          MC {instance.minecraftVersion}
         </div>
         <div style={{ marginTop: 'auto', display: 'flex', gap: 8, paddingTop: 10 }}>
           <PlayButton onClick={onLaunch} />
@@ -154,7 +154,7 @@ function PreviewCard({ instance, onLaunch, onEdit }: { instance: Instance; onLau
       </div>
       <div style={{ padding: '8px 10px' }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{instance.name}</div>
-        <div style={{ fontFamily: "'VT323',monospace", fontSize: 12, color: 'var(--ink-4)', letterSpacing: '.04em', marginTop: 2 }}>MC {instance.mcVersion}</div>
+        <div style={{ fontFamily: "'VT323',monospace", fontSize: 12, color: 'var(--ink-4)', letterSpacing: '.04em', marginTop: 2 }}>MC {instance.minecraftVersion}</div>
         <button
           onClick={(e) => { e.stopPropagation(); onLaunch() }}
           style={{

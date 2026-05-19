@@ -96,7 +96,7 @@ export function Sidebar() {
 
       {/* Bottom */}
       <div style={{ marginTop:'auto', display:'flex', flexDirection:'column', gap:2, paddingTop:10, borderTop:'1px solid var(--sb-line)' }}>
-        <Link to="/settings/" style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:4, color:'var(--ink-2)', fontSize:13, fontWeight:500, textDecoration:'none', border:'1px solid transparent' }}>
+        <Link to="/settings" style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:4, color:'var(--ink-2)', fontSize:13, fontWeight:500, textDecoration:'none', border:'1px solid transparent' }}>
           <div style={{ width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center' }}><CogIcon /></div>
           <span>Settings</span>
         </Link>
