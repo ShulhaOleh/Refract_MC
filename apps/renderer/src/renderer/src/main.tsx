@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
+import { useThemeStore } from './stores/theme'
 import './styles/globals.css'
+
+useThemeStore.getState().initialize()
 
 const queryClient = new QueryClient()
 
