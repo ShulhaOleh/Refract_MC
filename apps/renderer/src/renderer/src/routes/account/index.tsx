@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type React from 'react'
 import { api, type DeviceLogin, type SafeAccount } from '@/lib/api'
+import { compressImage } from '@/lib/image'
 
 export const Route = createFileRoute('/account/')({
   component: Account,
@@ -42,6 +44,9 @@ function Account() {
   const [offlineName, setOfflineName] = useState('Steve')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [avatars, setAvatars] = useState<Record<string, string>>({})
+  const [pickingFor, setPickingFor] = useState<string | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   async function refresh() {
     const [nextAccounts, nextActive] = await Promise.all([
@@ -55,6 +60,28 @@ function Account() {
   useEffect(() => {
     refresh().catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }, [])
+
+  useEffect(() => {
+    const loaded: Record<string, string> = {}
+    for (const acc of accounts) {
+      const stored = localStorage.getItem(`avatar:${acc.uuid}`)
+      if (stored) loaded[acc.uuid] = stored
+    }
+    setAvatars(loaded)
+  }, [accounts])
+
+  async function handleAvatarPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const uuid = pickingFor
+    if (!file || !uuid) return
+    try {
+      const dataUrl = await compressImage(file, 200)
+      localStorage.setItem(`avatar:${uuid}`, dataUrl)
+      setAvatars(prev => ({ ...prev, [uuid]: dataUrl }))
+    } catch { /* ignore */ }
+    e.target.value = ''
+    setPickingFor(null)
+  }
 
   useEffect(() => {
     if (!loginExpiresAt) {
@@ -183,6 +210,7 @@ function Account() {
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1.05fr) 360px', gap:18, minHeight:'100%' }}>
+      <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleAvatarPick} />
       <section style={{ background:'var(--surface)', border:'1px solid var(--border-r)', borderRadius:'var(--radius)', overflow:'hidden' }}>
         <div style={{ padding:'18px 20px', borderBottom:'1px solid var(--line)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
           <div>
@@ -323,12 +351,30 @@ function Account() {
                 }}
               >
                 <div style={{ display:'flex', justifyContent:'space-between', gap:10, alignItems:'start' }}>
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ color:'var(--ink)', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{account.username}</div>
-                    <div style={{ color:badge.color, fontFamily:"'VT323',monospace", fontSize:15, letterSpacing:'.08em' }}>{badge.label}</div>
-                    <div style={{ color:'var(--ink-4)', fontSize:11, lineHeight:1.35, marginTop:4 }}>{accessText(account)}</div>
+                  <div style={{ display:'flex', gap:10, alignItems:'start', minWidth:0, flex:1 }}>
+                    <div
+                      title="Click to change avatar"
+                      onClick={() => { setPickingFor(account.uuid); avatarInputRef.current?.click() }}
+                      style={{
+                        width:42, height:42, borderRadius:3, overflow:'hidden', flexShrink:0,
+                        border:'1px solid var(--border-r)', background:'var(--surface-3)',
+                        cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                      }}
+                    >
+                      {avatars[account.uuid]
+                        ? <img src={avatars[account.uuid]} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                        : <span style={{ fontFamily:"'VT323',monospace", fontSize:22, color:'var(--ink-3)' }}>
+                            {account.username[0]?.toUpperCase()}
+                          </span>
+                      }
+                    </div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ color:'var(--ink)', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{account.username}</div>
+                      <div style={{ color:badge.color, fontFamily:"'VT323',monospace", fontSize:15, letterSpacing:'.08em' }}>{badge.label}</div>
+                      <div style={{ color:'var(--ink-4)', fontSize:11, lineHeight:1.35, marginTop:4 }}>{accessText(account)}</div>
+                    </div>
                   </div>
-                  {isActive && <div style={{ color:'var(--accent)', fontFamily:"'VT323',monospace", fontSize:15 }}>ACTIVE</div>}
+                  {isActive && <div style={{ color:'var(--accent)', fontFamily:"'VT323',monospace", fontSize:15, flexShrink:0 }}>ACTIVE</div>}
                 </div>
                 <div style={{ display:'flex', gap:8 }}>
                   <button
@@ -345,7 +391,7 @@ function Account() {
                     disabled={!!busy}
                     style={{ height:30, padding:'0 10px', background:'transparent', color:'var(--redstone)', border:'1px solid rgba(217,59,59,.45)', cursor:'pointer' }}
                   >
-                    Remove
+                    Sign out
                   </button>
                 </div>
               </div>

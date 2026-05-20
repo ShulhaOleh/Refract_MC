@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import type React from 'react'
 import type { ModLoader } from '@refract/core'
 import { PixelScene, loaderToScene } from '@/components/ui/PixelScene'
+import { compressImage } from '@/lib/image'
 
 const MC_VERSIONS = [
   '1.21.5', '1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21',
@@ -39,6 +40,7 @@ interface CreateInput {
   minecraftVersion: string
   modLoader?: ModLoader
   memoryMb: number
+  iconPath?: string
 }
 
 interface Props {
@@ -52,7 +54,9 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate }: Props) {
   const [mcVersion, setMcVersion] = useState('1.21.1')
   const [modLoader, setModLoader] = useState<ModLoader | ''>('')
   const [memoryMb, setMemoryMb]   = useState(2048)
+  const [coverImage, setCoverImage] = useState('')
   const [loading, setLoading]     = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function setMemory(mb: number) {
     setMemoryMb(Math.max(MEMORY_MIN_MB, Math.min(MEMORY_MAX_MB, mb)))
@@ -63,6 +67,14 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate }: Props) {
     setMcVersion('1.21.1')
     setModLoader('')
     setMemoryMb(2048)
+    setCoverImage('')
+  }
+
+  async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try { setCoverImage(await compressImage(file)) } catch { /* ignore */ }
+    e.target.value = ''
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -70,7 +82,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate }: Props) {
     if (!name.trim()) return
     setLoading(true)
     try {
-      await onCreate({ name: name.trim(), minecraftVersion: mcVersion, modLoader: modLoader || undefined, memoryMb })
+      await onCreate({ name: name.trim(), minecraftVersion: mcVersion, modLoader: modLoader || undefined, memoryMb, iconPath: coverImage || undefined })
       onOpenChange(false)
       reset()
     } finally {
@@ -101,7 +113,8 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate }: Props) {
 
             {/* Preview column */}
             <div style={{ width:160, flexShrink:0, borderRight:'1px solid var(--line)', display:'flex', flexDirection:'column' }}>
-              <PixelScene name={loaderToScene(modLoader || null)} style={{ width:'100%', height:140 }} />
+              <ImagePickerArea image={coverImage} fallback={<PixelScene name={loaderToScene(modLoader || null)} style={{ width:'100%', height:140 }} />} onClick={() => fileInputRef.current?.click()} />
+              <input ref={fileInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleImagePick} />
               <div style={{ padding:'10px 12px', display:'flex', flexDirection:'column', gap:5, flex:1 }}>
                 <div style={{ fontSize:12, fontWeight:600, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {name || <span style={{ color:'var(--ink-4)' }}>My Instance</span>}
@@ -202,6 +215,35 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate }: Props) {
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  )
+}
+
+function ImagePickerArea({ image, fallback, onClick }: { image: string; fallback: React.ReactNode; onClick: () => void }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      style={{ width:'100%', height:140, position:'relative', cursor:'pointer', overflow:'hidden', flexShrink:0 }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {image
+        ? <img src={image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+        : fallback
+      }
+      <div style={{
+        position:'absolute', inset:0,
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
+        background:'rgba(0,0,0,.52)',
+        opacity: hover ? 1 : 0,
+        transition:'opacity .14s',
+      }}>
+        <div style={{ fontFamily:"'VT323',monospace", fontSize:14, letterSpacing:'.1em', color:'#fff' }}>
+          {image ? 'CHANGE' : 'SET IMAGE'}
+        </div>
+        <div style={{ fontSize:10, color:'rgba(255,255,255,.6)' }}>click to browse</div>
+      </div>
+    </div>
   )
 }
 

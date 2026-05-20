@@ -106,7 +106,10 @@ function HeroCard({ instance, onLaunch, onEdit, canLaunch, isRunning }: { instan
       flexDirection: 'column',
     }}>
       <div style={{ height: 160, position: 'relative', overflow: 'hidden' }}>
-        <PixelScene name={loaderToScene(instance.modLoader)} style={{ width: '100%', height: '100%' }} />
+        {instance.iconPath
+          ? <img src={instance.iconPath} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+          : <PixelScene name={loaderToScene(instance.modLoader)} style={{ width: '100%', height: '100%' }} />
+        }
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           background: 'linear-gradient(transparent, rgba(0,0,0,.6))',
@@ -182,7 +185,10 @@ function PreviewCard({ instance, onLaunch, onEdit, canLaunch, isRunning }: { ins
     onClick={onEdit}
     >
       <div style={{ height: 90, position: 'relative', overflow: 'hidden' }}>
-        <PixelScene name={loaderToScene(instance.modLoader)} style={{ width: '100%', height: '100%' }} />
+        {instance.iconPath
+          ? <img src={instance.iconPath} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+          : <PixelScene name={loaderToScene(instance.modLoader)} style={{ width: '100%', height: '100%' }} />
+        }
       </div>
       <div style={{ padding: '8px 10px' }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{instance.name}</div>

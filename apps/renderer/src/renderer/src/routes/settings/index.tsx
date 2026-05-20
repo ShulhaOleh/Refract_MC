@@ -1,7 +1,9 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type React from 'react'
 import { api, type AppConfig, type SafeAccount } from '@/lib/api'
 import { useThemeStore } from '@/stores/theme'
+import { compressImage } from '@/lib/image'
 
 export const Route = createFileRoute('/settings/')({
   component: Settings,
@@ -25,6 +27,9 @@ function Settings() {
   const [toast, setToast] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [avatars, setAvatars] = useState<Record<string, string>>({})
+  const [pickingFor, setPickingFor] = useState<string | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   async function refresh() {
     const [nextConfig, nextAccounts, nextActive] = await Promise.all([
@@ -40,6 +45,33 @@ function Settings() {
   useEffect(() => {
     refresh().catch((err) => setError(err instanceof Error ? err.message : String(err)))
   }, [])
+
+  useEffect(() => {
+    const loaded: Record<string, string> = {}
+    for (const acc of accounts) {
+      const stored = localStorage.getItem(`avatar:${acc.uuid}`)
+      if (stored) loaded[acc.uuid] = stored
+    }
+    setAvatars(loaded)
+  }, [accounts])
+
+  async function handleAvatarPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const uuid = pickingFor
+    if (!file || !uuid) return
+    try {
+      const dataUrl = await compressImage(file, 200)
+      localStorage.setItem(`avatar:${uuid}`, dataUrl)
+      setAvatars(prev => ({ ...prev, [uuid]: dataUrl }))
+    } catch { /* ignore */ }
+    e.target.value = ''
+    setPickingFor(null)
+  }
+
+  function pickAvatar(uuid: string) {
+    setPickingFor(uuid)
+    avatarInputRef.current?.click()
+  }
 
   function showToast(message: string) {
     setToast(message)
@@ -144,32 +176,46 @@ function Settings() {
           </Panel>
 
           <Panel title="Account Access">
-            <div style={{ display:'grid', gap:12 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:14 }}>
-                <div style={{ minWidth:0 }}>
-                  <div style={{ color:'var(--ink)', fontWeight:700 }}>
+            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleAvatarPick} />
+            <div style={{ display:'grid', gap:14 }}>
+
+              {/* Active profile hero row */}
+              <div style={{ display:'flex', alignItems:'center', gap:14, padding:14, background:'var(--bg)', border:'1px solid var(--border-r)', borderRadius:4 }}>
+                <AvatarPicker
+                  avatar={activeAccount ? avatars[activeAccount.uuid] : undefined}
+                  initial={activeAccount?.username[0]?.toUpperCase() ?? '?'}
+                  size={56}
+                  onClick={() => activeAccount && pickAvatar(activeAccount.uuid)}
+                  disabled={!activeAccount}
+                />
+                <div style={{ minWidth:0, flex:1 }}>
+                  <div style={{ color:'var(--ink)', fontWeight:700, fontSize:15 }}>
                     {activeAccount ? activeAccount.username : 'No active profile'}
                   </div>
-                  <div style={{ color:'var(--ink-3)', fontSize:12, marginTop:4 }}>
+                  <div style={{ color:'var(--ink-3)', fontSize:12, marginTop:3 }}>
                     {activeAccount
                       ? activeAccount.canPlayMinecraft
                         ? 'Java license verified through Microsoft.'
-                        : 'Guest profile can browse mods and prepare instances.'
+                        : 'Guest profile — browse mods and prepare instances.'
                       : 'Create a guest profile or sign in with Microsoft.'}
                   </div>
+                  {activeAccount && (
+                    <div style={{ fontSize:11, color:'var(--ink-4)', marginTop:4 }}>Click avatar to change profile picture</div>
+                  )}
                 </div>
                 <Link
                   to="/account"
                   style={{
                     height:34, padding:'0 14px', display:'inline-flex', alignItems:'center',
                     background:'var(--surface-3)', color:'var(--ink)', border:'1px solid var(--border-r)',
-                    borderRadius:4, textDecoration:'none', fontSize:12, fontWeight:700,
+                    borderRadius:4, textDecoration:'none', fontSize:12, fontWeight:700, flexShrink:0,
                   }}
                 >
-                  Open login
+                  Manage
                 </Link>
               </div>
 
+              {/* Account list */}
               <div style={{ display:'grid', gap:8 }}>
                 {accounts.length === 0 ? (
                   <div style={{ color:'var(--ink-4)', fontSize:12 }}>No saved profiles.</div>
@@ -179,34 +225,45 @@ function Settings() {
                     <div
                       key={account.uuid}
                       style={{
-                        padding:12, background:isActive ? 'var(--accent-tint)' : 'var(--bg)',
+                        padding:'10px 12px', background:isActive ? 'var(--accent-tint)' : 'var(--bg)',
                         border:`1px solid ${isActive ? 'var(--accent)' : 'var(--border-r)'}`,
-                        borderRadius:4, display:'flex', alignItems:'center', gap:12,
+                        borderRadius:4, display:'flex', alignItems:'center', gap:10,
                       }}
                     >
+                      <AvatarPicker
+                        avatar={avatars[account.uuid]}
+                        initial={account.username[0]?.toUpperCase() ?? '?'}
+                        size={34}
+                        onClick={() => pickAvatar(account.uuid)}
+                      />
                       <div style={{ minWidth:0, flex:1 }}>
-                        <div style={{ color:'var(--ink)', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        <div style={{ color:'var(--ink)', fontWeight:700, fontSize:13, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                           {account.username}
                         </div>
-                        <div style={{ color:account.canPlayMinecraft ? 'var(--diamond)' : 'var(--gold)', fontSize:11, marginTop:3 }}>
+                        <div style={{ color:account.canPlayMinecraft ? 'var(--diamond)' : 'var(--gold)', fontSize:11, marginTop:2 }}>
                           {account.canPlayMinecraft ? 'Licensed Microsoft' : 'Guest content'}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setActive(account.uuid)}
-                        disabled={isActive || !!busy}
-                        style={smallButtonStyle(isActive || !!busy)}
-                      >
-                        Use
-                      </button>
+                      {isActive && (
+                        <div style={{ fontSize:11, fontFamily:"'VT323',monospace", letterSpacing:'.06em', color:'var(--accent)', flexShrink:0 }}>ACTIVE</div>
+                      )}
+                      {!isActive && (
+                        <button
+                          type="button"
+                          onClick={() => setActive(account.uuid)}
+                          disabled={!!busy}
+                          style={smallButtonStyle(!!busy)}
+                        >
+                          Use
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => removeAccount(account.uuid)}
                         disabled={!!busy}
-                        style={{ ...smallButtonStyle(!!busy), color:'var(--redstone)', background:'transparent', border:'1px solid rgba(217,59,59,.45)' }}
+                        style={{ ...smallButtonStyle(!!busy), color:'var(--redstone)', background:'transparent', border:'1px solid rgba(217,59,59,.4)' }}
                       >
-                        Remove
+                        Sign out
                       </button>
                     </div>
                   )
@@ -245,6 +302,39 @@ function Settings() {
           color:'var(--ink)', fontSize:13, zIndex:50,
         }}>
           {toast}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AvatarPicker({ avatar, initial, size, onClick, disabled }: { avatar?: string; initial: string; size: number; onClick: () => void; disabled?: boolean }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      onClick={disabled ? undefined : onClick}
+      onMouseEnter={() => { if (!disabled) setHover(true) }}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width:size, height:size, borderRadius:3, overflow:'hidden', flexShrink:0,
+        border:`1px solid ${hover ? 'var(--accent)' : 'var(--border-r)'}`,
+        background:'var(--surface-3)',
+        cursor: disabled ? 'default' : 'pointer',
+        position:'relative',
+        transition:'border-color .14s',
+      }}
+    >
+      {avatar
+        ? <img src={avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+        : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'VT323',monospace", fontSize:size * 0.45, color:'var(--ink-3)' }}>{initial}</div>
+      }
+      {hover && !disabled && (
+        <div style={{
+          position:'absolute', inset:0, background:'rgba(0,0,0,.55)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          fontFamily:"'VT323',monospace", fontSize:Math.max(10, size * 0.22), letterSpacing:'.06em', color:'#fff',
+        }}>
+          {size >= 48 ? 'CHANGE' : '✎'}
         </div>
       )}
     </div>
