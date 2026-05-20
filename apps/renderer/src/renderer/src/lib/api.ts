@@ -110,6 +110,16 @@ function createBrowserApi(): RefractAPI {
         })
         return account
       },
+      renameOffline: async (uuid, username) => {
+        const trimmed = username.trim()
+        if (!trimmed) throw new Error('Username is required.')
+        const config = getConfig()
+        const account = config.accounts.find((a) => a.uuid === uuid)
+        if (!account) throw new Error(`Account not found: ${uuid}`)
+        account.username = trimmed
+        saveConfig(config)
+        return account
+      },
       setActive: async (uuid) => {
         const config = getConfig()
         const account = config.accounts.find((candidate) => candidate.uuid === uuid)

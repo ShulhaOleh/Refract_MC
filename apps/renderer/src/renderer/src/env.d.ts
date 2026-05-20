@@ -82,6 +82,16 @@ declare global {
           canPlayMinecraft: boolean
           licenseStatus: 'verified' | 'guest'
         }>
+        renameOffline: (uuid: string, username: string) => Promise<{
+          uuid: string
+          username: string
+          type: 'microsoft' | 'offline' | 'yggdrasil'
+          expiresAt?: number
+          yggdrasilServer?: string
+          canManageContent: boolean
+          canPlayMinecraft: boolean
+          licenseStatus: 'verified' | 'guest'
+        }>
         setActive: (uuid: string) => Promise<{
           uuid: string
           username: string

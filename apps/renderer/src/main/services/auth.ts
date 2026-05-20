@@ -245,6 +245,18 @@ export function setActiveAccount(uuid: string): SafeAccount {
   return toSafeAccount(account)
 }
 
+export function renameOfflineAccount(uuid: string, newUsername: string): SafeAccount {
+  const trimmed = newUsername.trim()
+  if (!trimmed) throw new Error('Username is required.')
+  const config = getConfig()
+  const account = config.accounts.find((a) => a.uuid === uuid)
+  if (!account) throw new Error(`Account not found: ${uuid}`)
+  if (account.type !== 'offline') throw new Error('Only offline accounts can be renamed.')
+  account.username = trimmed
+  saveConfig(config)
+  return toSafeAccount(account)
+}
+
 export function logoutAccount(uuid: string): void {
   const config = getConfig()
   config.accounts = config.accounts.filter((account) => account.uuid !== uuid)

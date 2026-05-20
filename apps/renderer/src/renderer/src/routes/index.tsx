@@ -142,7 +142,7 @@ function HeroCard({ instance, onLaunch, onEdit, canLaunch, isRunning }: { instan
         )}
         {instance.isInstalled && !canLaunch && (
           <div style={{ fontSize: 11, color: 'var(--gold)', lineHeight: 1.35 }}>
-            Microsoft account required to play online.
+            Sign in or create a profile to play.
           </div>
         )}
         <div style={{ marginTop: 'auto', display: 'flex', gap: 8, paddingTop: 10 }}>
@@ -270,7 +270,7 @@ function Library() {
 
   const clock = useClock()
   const timeStr = clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-  const canLaunchMinecraft = activeAccount?.canPlayMinecraft === true
+  const canLaunchMinecraft = activeAccount != null
 
   useEffect(() => {
     api.auth.active()
@@ -319,10 +319,7 @@ function Library() {
 
   async function handleLaunch(instance: Instance) {
     if (!canLaunchMinecraft) {
-      const message = activeAccount
-        ? `${activeAccount.username} — sign in with a licensed Microsoft account to play Minecraft.`
-        : 'Sign in with a licensed Microsoft account to play Minecraft.'
-      setLaunchToast(message)
+      setLaunchToast('Create a profile first — go to Accounts and add a guest or Microsoft profile.')
       setTimeout(() => setLaunchToast(null), 3600)
       return
     }

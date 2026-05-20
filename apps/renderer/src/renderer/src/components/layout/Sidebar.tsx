@@ -128,7 +128,7 @@ function AvatarBlock() {
           {account ? account.username.toUpperCase() : 'GUEST'}
         </div>
         <div style={{ fontFamily:"'VT323',monospace", fontSize:12, color: account?.canPlayMinecraft ? 'var(--grass)' : 'var(--gold)', letterSpacing:'.04em', lineHeight:1.4 }}>
-          {account ? (account.canPlayMinecraft ? 'PLAY ENABLED' : 'CONTENT ONLY') : 'NOT SIGNED IN'}
+          {account ? (account.canPlayMinecraft ? 'PLAY ENABLED' : 'OFFLINE') : 'NOT SIGNED IN'}
         </div>
       </div>
 

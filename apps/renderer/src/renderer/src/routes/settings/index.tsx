@@ -137,7 +137,7 @@ function Settings() {
   }
 
   const sidebarWidth = layoutOverrides.sidebarWidth ?? '232px'
-  const activeAccess = activeAccount?.canPlayMinecraft ? 'Minecraft play enabled' : 'Content access enabled'
+  const activeAccess = activeAccount?.canPlayMinecraft ? 'Minecraft play enabled' : activeAccount ? 'Offline play enabled' : 'No active profile'
 
   return (
     <div style={{ display:'grid', gap:18 }}>
@@ -206,8 +206,8 @@ function Settings() {
                     {activeAccount
                       ? activeAccount.canPlayMinecraft
                         ? 'Java license verified through Microsoft.'
-                        : 'Guest profile — browse mods and prepare instances.'
-                      : 'Create a guest profile or sign in with Microsoft.'}
+                        : 'Offline profile — play in offline mode. Multiplayer servers need a licensed account.'
+                      : 'Create an offline profile or sign in with Microsoft.'}
                   </div>
                   {activeAccount && (
                     <div style={{ fontSize:11, color:'var(--ink-4)', marginTop:4 }}>Click avatar to change profile picture</div>
@@ -251,7 +251,7 @@ function Settings() {
                           {account.username}
                         </div>
                         <div style={{ color:account.canPlayMinecraft ? 'var(--diamond)' : 'var(--gold)', fontSize:11, marginTop:2 }}>
-                          {account.canPlayMinecraft ? 'Licensed Microsoft' : 'Guest content'}
+                          {account.canPlayMinecraft ? 'Licensed Microsoft' : 'Offline play'}
                         </div>
                       </div>
                       {isActive && (

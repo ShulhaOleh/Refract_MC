@@ -16,6 +16,7 @@ export const api = {
     microsoftBegin:    ()                         => ipcRenderer.invoke('auth.microsoft.begin'),
     microsoftComplete: (deviceCode: string)       => ipcRenderer.invoke('auth.microsoft.complete', deviceCode),
     createOffline:     (username: string)         => ipcRenderer.invoke('auth.offline.create', username),
+    renameOffline:     (uuid: string, username: string) => ipcRenderer.invoke('auth.offline.rename', uuid, username),
     setActive:         (uuid: string)             => ipcRenderer.invoke('auth.setActive', uuid),
     logout:            (uuid: string)             => ipcRenderer.invoke('auth.logout', uuid),
   },

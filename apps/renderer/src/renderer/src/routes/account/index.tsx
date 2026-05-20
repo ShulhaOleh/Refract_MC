@@ -16,8 +16,8 @@ function accountBadge(type: SafeAccount['type']) {
 }
 
 function accessText(account: SafeAccount) {
-  if (account.canPlayMinecraft) return 'Java license verified. Play is enabled.'
-  return 'Guest content access. Mods and instances are enabled; play needs a licensed Microsoft account.'
+  if (account.canPlayMinecraft) return 'Java license verified. Online multiplayer enabled.'
+  return 'Offline play enabled. No Microsoft login required — multiplayer servers need a licensed account.'
 }
 
 function isPendingDeviceLogin(message: string) {
@@ -45,6 +45,8 @@ function Account() {
   const [offlineName, setOfflineName] = useState('Steve')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const avatars = useAvatarStore((s) => s.avatars)
   const setAvatarStore = useAvatarStore((s) => s.setAvatar)
   const [pickingFor, setPickingFor] = useState<string | null>(null)
@@ -200,6 +202,23 @@ function Account() {
     await refresh()
   }
 
+  function startRename(account: SafeAccount) {
+    setRenamingId(account.uuid)
+    setRenameValue(account.username)
+  }
+
+  async function commitRename(uuid: string) {
+    if (!renameValue.trim()) return
+    await run(`rename-${uuid}`, () => api.auth.renameOffline(uuid, renameValue))
+    setRenamingId(null)
+    await refresh()
+  }
+
+  function cancelRename() {
+    setRenamingId(null)
+    setRenameValue('')
+  }
+
   return (
     <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1.05fr) 360px', gap:18, minHeight:'100%' }}>
       <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleAvatarPick} />
@@ -293,9 +312,9 @@ function Account() {
           </div>
 
           <div style={{ background:'var(--surface-2)', border:'1px solid var(--border-r)', borderRadius:4, padding:16 }}>
-            <h2 style={{ margin:'0 0 8px', color:'var(--ink)', fontSize:16 }}>Guest Content Profile</h2>
+            <h2 style={{ margin:'0 0 8px', color:'var(--ink)', fontSize:16 }}>Offline Profile</h2>
             <p style={{ margin:'0 0 12px', color:'var(--ink-3)', fontSize:13, lineHeight:1.5 }}>
-              Use this to browse mods, prepare instances, and manage local files without signing in. Launching Minecraft requires a verified Microsoft account.
+              Play Minecraft in offline mode without a Microsoft account. Set any in-game nickname you like. Multiplayer servers that require authentication still need a licensed account.
             </p>
             <div style={{ display:'flex', gap:8 }}>
               <input
@@ -360,9 +379,28 @@ function Account() {
                           </span>
                       }
                     </div>
-                    <div style={{ minWidth:0 }}>
-                      <div style={{ color:'var(--ink)', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{account.username}</div>
-                      <div style={{ color:badge.color, fontFamily:"'VT323',monospace", fontSize:15, letterSpacing:'.08em' }}>{badge.label}</div>
+                    <div style={{ minWidth:0, flex:1 }}>
+                      {renamingId === account.uuid ? (
+                        <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                          <input
+                            autoFocus
+                            value={renameValue}
+                            onChange={e => setRenameValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') void commitRename(account.uuid); if (e.key === 'Escape') cancelRename() }}
+                            style={{ flex:1, minWidth:0, height:28, background:'var(--bg)', border:'1px solid var(--accent)', color:'var(--ink)', padding:'0 8px', outline:'none', fontSize:13, borderRadius:3 }}
+                          />
+                          <button type="button" onClick={() => void commitRename(account.uuid)} disabled={!renameValue.trim() || !!busy} style={{ height:28, padding:'0 10px', background:'var(--accent)', color:'#fff', border:'none', cursor:'pointer', fontSize:12, fontWeight:700, borderRadius:3 }}>Save</button>
+                          <button type="button" onClick={cancelRename} style={{ height:28, padding:'0 8px', background:'transparent', color:'var(--ink-3)', border:'1px solid var(--border-r)', cursor:'pointer', fontSize:12, borderRadius:3 }}>✕</button>
+                        </div>
+                      ) : (
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <div style={{ color:'var(--ink)', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{account.username}</div>
+                          {account.type === 'offline' && (
+                            <button type="button" title="Rename" onClick={() => startRename(account)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--ink-4)', fontSize:13, padding:'0 2px', lineHeight:1 }}>✎</button>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ color:badge.color, fontFamily:"'VT323',monospace", fontSize:15, letterSpacing:'.08em', marginTop:2 }}>{badge.label}</div>
                       <div style={{ color:'var(--ink-4)', fontSize:11, lineHeight:1.35, marginTop:4 }}>{accessText(account)}</div>
                     </div>
                   </div>
