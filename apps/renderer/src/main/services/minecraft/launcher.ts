@@ -30,32 +30,29 @@ function readForgeJson(versionId: string): VersionJson | null {
   try { return JSON.parse(readFileSync(p, 'utf-8')) as VersionJson } catch { return null }
 }
 
-async function resolveJava(requiredMajor: number, instanceJavaPath?: string): Promise<string> {
+async function resolveJava(requiredMajor: number, instanceJavaPath?: string): Promise<{ exe: string; version: number }> {
   if (instanceJavaPath) {
-    // Accept full exe path or JDK home dir
-    if (existsSync(instanceJavaPath)) return instanceJavaPath
+    if (existsSync(instanceJavaPath)) return { exe: instanceJavaPath, version: requiredMajor }
     const exeWin  = join(instanceJavaPath, 'bin', 'java.exe')
-    if (existsSync(exeWin)) return exeWin
+    if (existsSync(exeWin)) return { exe: exeWin, version: requiredMajor }
     const exeUnix = join(instanceJavaPath, 'bin', 'java')
-    if (existsSync(exeUnix)) return exeUnix
+    if (existsSync(exeUnix)) return { exe: exeUnix, version: requiredMajor }
   }
 
   const installs = await detectJavaInstallations()
 
-  // Try to find matching major version
   const match = installs.find(j => j.version >= requiredMajor) ?? installs[0]
   if (match) {
     const exe = join(match.path, 'bin', 'java.exe')
-    if (existsSync(exe)) return exe
+    if (existsSync(exe)) return { exe, version: match.version }
     const exeUnix = join(match.path, 'bin', 'java')
-    if (existsSync(exeUnix)) return exeUnix
+    if (existsSync(exeUnix)) return { exe: exeUnix, version: match.version }
   }
 
-  // Last resort: check PATH explicitly
   try {
     const { execSync } = await import('child_process')
     const which = execSync('where java', { timeout: 3000 }).toString().trim().split(/\r?\n/)[0]?.trim()
-    if (which && existsSync(which)) return which
+    if (which && existsSync(which)) return { exe: which, version: requiredMajor }
   } catch { /* not in PATH */ }
 
   throw new Error(
@@ -93,7 +90,7 @@ export async function launchInstance(
     : forgeJson ?? undefined
 
   const requiredJava = versionJson.javaVersion?.majorVersion ?? 8
-  const javaExe = await resolveJava(requiredJava, instance.javaPath)
+  const { exe: javaExe, version: javaVersion } = await resolveJava(requiredJava, instance.javaPath)
 
   const gameDir = join(paths.instances, instanceId, 'minecraft')
   mkdirSync(join(gameDir, 'mods'), { recursive: true })
@@ -120,7 +117,15 @@ export async function launchInstance(
     },
   })
 
-  const [exe, ...args] = cmd
+  // Strip JVM flags that require a Java version newer than what we have
+  const versionGatedFlags: Array<{ flag: string; minJava: number }> = [
+    { flag: '--sun-misc-unsafe-memory-access', minJava: 25 },
+  ]
+  const [exe, ...rawArgs] = cmd
+  const args = rawArgs.filter(arg =>
+    !versionGatedFlags.some(({ flag, minJava }) => arg.startsWith(flag) && javaVersion < minJava)
+  )
+
   const proc = spawn(exe, args, {
     cwd: gameDir,
     detached: false,
