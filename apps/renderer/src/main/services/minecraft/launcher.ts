@@ -4,6 +4,7 @@ import { spawn, ChildProcess } from 'child_process'
 import { BrowserWindow } from 'electron'
 import { paths } from '../paths'
 import { getConfig } from '../config'
+import { getOrRefreshMinecraftToken } from '../auth'
 import type { VersionJson } from '@refract/core'
 import { buildLaunchCommand } from '@refract/core/launcher'
 import { detectJavaInstallations } from '@refract/core/java-manager'
@@ -83,11 +84,13 @@ export async function launchInstance(
   if (!versionJson) throw new Error('Version JSON missing. Please reinstall.')
 
   const isForge = instance.modLoader === 'forge' || instance.modLoader === 'neoforge'
+  const forgeJson = isForge ? readForgeJson(instance.minecraftVersion) : null
+  if (isForge && !forgeJson) {
+    throw new Error('Forge is not fully installed. Please reinstall this instance.')
+  }
   const fabricJson = instance.modLoader === 'fabric'
     ? readFabricJson(instance.minecraftVersion)
-    : isForge
-      ? readForgeJson(instance.minecraftVersion)
-      : undefined
+    : forgeJson ?? undefined
 
   const requiredJava = versionJson.javaVersion?.majorVersion ?? 8
   const javaExe = await resolveJava(requiredJava, instance.javaPath)
@@ -96,18 +99,7 @@ export async function launchInstance(
   mkdirSync(join(gameDir, 'mods'), { recursive: true })
   mkdirSync(join(gameDir, 'saves'), { recursive: true })
 
-  const { safeStorage } = await import('electron')
-  let accessToken = 'offline'
-  if (account.encryptedAccessToken) {
-    try {
-      const raw = account.encryptedAccessToken
-      if (raw.startsWith('b64:')) {
-        accessToken = Buffer.from(raw.slice(4), 'base64').toString('utf8')
-      } else if (safeStorage.isEncryptionAvailable()) {
-        accessToken = safeStorage.decryptString(Buffer.from(raw, 'base64'))
-      }
-    } catch { /* use offline */ }
-  }
+  const accessToken = await getOrRefreshMinecraftToken(account.uuid)
 
   const cmd = buildLaunchCommand({
     versionId: instance.minecraftVersion,

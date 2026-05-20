@@ -114,7 +114,7 @@ function PlayButton({ onClick, disabled = false, label = 'PLAY' }: { onClick?: (
   )
 }
 
-function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, canLaunch, isRunning }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; canLaunch: boolean; isRunning: boolean }) {
+function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, canLaunch, isRunning, hasLogs }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; canLaunch: boolean; isRunning: boolean; hasLogs: boolean }) {
   const label = isRunning ? 'STOP' : instance.isInstalled ? 'PLAY' : 'INSTALL'
   return (
     <div style={{
@@ -169,22 +169,22 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, canLaunch
         )}
         <div style={{ marginTop: 'auto', display: 'flex', gap: 8, paddingTop: 10 }}>
           <PlayButton onClick={onLaunch} disabled={false} label={label} />
-          {isRunning && (
+          {(isRunning || hasLogs) && (
             <button
               onClick={onConsole}
               style={{
                 fontFamily: "'VT323',monospace",
                 fontSize: 14, letterSpacing: '.08em',
-                color: 'var(--grass)',
-                background: 'rgba(74,196,100,.1)',
-                border: '1px solid rgba(74,196,100,.3)',
+                color: isRunning ? 'var(--grass)' : 'var(--ink-3)',
+                background: isRunning ? 'rgba(74,196,100,.1)' : 'var(--surface-2)',
+                border: `1px solid ${isRunning ? 'rgba(74,196,100,.3)' : 'var(--border-r)'}`,
                 borderRadius: 3,
                 padding: '0 10px',
                 height: 40,
                 cursor: 'pointer',
               }}
             >
-              CONSOLE
+              {isRunning ? 'CONSOLE' : 'LOG'}
             </button>
           )}
           <button
@@ -554,6 +554,7 @@ function Library() {
                 onMods={() => setModsTarget(inst)}
                 canLaunch={canLaunchMinecraft}
                 isRunning={runningIds.has(inst.id)}
+                hasLogs={(consoleLogs.get(inst.id)?.length ?? 0) > 0}
               />
             ))}
           </div>
