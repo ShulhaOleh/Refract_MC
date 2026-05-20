@@ -41,7 +41,8 @@ async function resolveJava(requiredMajor: number, instanceJavaPath?: string): Pr
 
   const installs = await detectJavaInstallations()
 
-  const match = installs.find(j => j.version >= requiredMajor) ?? installs[0]
+  // Prefer exact version match; never fall back to an incompatible version
+  const match = installs.find(j => j.version >= requiredMajor)
   if (match) {
     const exe = join(match.path, 'bin', 'java.exe')
     if (existsSync(exe)) return { exe, version: match.version }
@@ -50,13 +51,20 @@ async function resolveJava(requiredMajor: number, instanceJavaPath?: string): Pr
   }
 
   try {
-    const { execSync } = await import('child_process')
-    const which = execSync('where java', { timeout: 3000 }).toString().trim().split(/\r?\n/)[0]?.trim()
-    if (which && existsSync(which)) return { exe: which, version: requiredMajor }
+    const { spawnSync } = await import('child_process')
+    const which = require('child_process').execSync('where java', { timeout: 3000 }).toString().trim().split(/\r?\n/)[0]?.trim()
+    if (which && existsSync(which)) {
+      const result = spawnSync(which, ['-version'], { encoding: 'utf8', timeout: 3000 })
+      const out = (result.stdout ?? '') + (result.stderr ?? '')
+      const verMatch = out.match(/version "([^"]+)"/)
+      const major = verMatch ? (verMatch[1].startsWith('1.') ? parseInt(verMatch[1].split('.')[1]) : parseInt(verMatch[1].split('.')[0])) : 0
+      if (major >= requiredMajor) return { exe: which, version: major }
+    }
   } catch { /* not in PATH */ }
 
+  const found = installs[0] ? `Java ${installs[0].version} is installed` : 'no Java found'
   throw new Error(
-    `Java ${requiredMajor}+ not found. Install Java from https://adoptium.net or set a Java path in instance settings.`
+    `This Minecraft version requires Java ${requiredMajor}, but ${found}. Install Java ${requiredMajor} from https://adoptium.net`
   )
 }
 
