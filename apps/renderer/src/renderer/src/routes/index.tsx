@@ -5,6 +5,7 @@ import { PixelScene, loaderToScene } from '@/components/ui/PixelScene'
 import { ChevLeftIcon, ChevRightIcon } from '@/components/ui/BlockIcons'
 import { CreateInstanceDialog } from '@/components/instances/CreateInstanceDialog'
 import { EditInstanceDialog } from '@/components/instances/EditInstanceDialog'
+import { InstanceModsDialog } from '@/components/instances/InstanceModsDialog'
 import { InstallProgress } from '@/components/minecraft/InstallProgress'
 import { useInstances, useCreateInstance, useUpdateInstance, useDeleteInstance } from '@/hooks/use-instances'
 import { api } from '@/lib/api'
@@ -93,7 +94,7 @@ function PlayButton({ onClick, disabled = false, label = 'PLAY' }: { onClick?: (
   )
 }
 
-function HeroCard({ instance, onLaunch, onEdit, onConsole, canLaunch, isRunning }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; canLaunch: boolean; isRunning: boolean }) {
+function HeroCard({ instance, onLaunch, onEdit, onConsole, onMods, canLaunch, isRunning }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; canLaunch: boolean; isRunning: boolean }) {
   const label = isRunning ? 'STOP' : instance.isInstalled ? 'PLAY' : 'INSTALL'
   return (
     <div style={{
@@ -166,6 +167,17 @@ function HeroCard({ instance, onLaunch, onEdit, onConsole, canLaunch, isRunning 
             </button>
           )}
           <button
+            onClick={onMods}
+            style={{
+              fontFamily: "'VT323',monospace", fontSize: 14, letterSpacing: '.06em',
+              color: 'var(--ink-2)',
+              background: 'var(--surface-2)', border: '1px solid var(--border-r)',
+              borderRadius: 3, padding: '0 10px', height: 40, cursor: 'pointer',
+            }}
+          >
+            MODS
+          </button>
+          <button
             onClick={onEdit}
             style={{
               fontSize: 12, fontWeight: 500,
@@ -176,7 +188,6 @@ function HeroCard({ instance, onLaunch, onEdit, onConsole, canLaunch, isRunning 
               padding: '0 14px',
               height: 40,
               cursor: 'pointer',
-              marginLeft: isRunning ? 0 : 'auto',
             }}
           >
             Edit
@@ -329,6 +340,7 @@ function Library() {
   const [mcVersions, setMcVersions] = useState<MinecraftVersion[]>([])
   const [consoleLogs, setConsoleLogs] = useState<Map<string, string[]>>(new Map())
   const [consoleOpen, setConsoleOpen] = useState<string | null>(null)
+  const [modsTarget, setModsTarget] = useState<Instance | null>(null)
 
   const { data: instances = [], isLoading } = useInstances()
   const createInstance = useCreateInstance()
@@ -544,6 +556,7 @@ function Library() {
                 onLaunch={() => handleLaunch(heroInstance)}
                 onEdit={() => setEditTarget(heroInstance)}
                 onConsole={() => setConsoleOpen(heroInstance.id)}
+                onMods={() => setModsTarget(heroInstance)}
                 canLaunch={canLaunchMinecraft}
                 isRunning={runningIds.has(heroInstance.id)}
               />
@@ -651,6 +664,12 @@ function Library() {
           }}
         />
       )}
+
+      <InstanceModsDialog
+        instance={modsTarget}
+        open={modsTarget !== null}
+        onOpenChange={(v) => { if (!v) setModsTarget(null) }}
+      />
 
       {consoleOpen && (() => {
         const inst = instances.find(i => i.id === consoleOpen)

@@ -1,5 +1,5 @@
 import { join, relative, resolve } from 'path'
-import { existsSync, createWriteStream, mkdirSync } from 'fs'
+import { existsSync, createWriteStream, mkdirSync, rmSync, copyFileSync, readdirSync } from 'fs'
 import { createUnzip } from 'zlib'
 import { pipeline } from 'stream/promises'
 import https from 'https'
@@ -75,42 +75,46 @@ async function extractNatives(libs: Library[], instanceId: string): Promise<void
   }
 }
 
-async function extractJar(jarPath: string, destDir: string, exclude: string[]): Promise<void> {
+function copyNativeFiles(src: string, dst: string): void {
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    const full = join(src, entry.name)
+    if (entry.isDirectory()) {
+      copyNativeFiles(full, dst)
+    } else if (/\.(dll|so|dylib|jnilib)$/i.test(entry.name)) {
+      const target = join(dst, entry.name)
+      if (!existsSync(target)) {
+        try { copyFileSync(full, target) } catch { /* ignore */ }
+      }
+    }
+  }
+}
+
+async function extractJar(jarPath: string, destDir: string, _exclude: string[]): Promise<void> {
   if (!existsSync(jarPath)) return
+  mkdirSync(destDir, { recursive: true })
 
   const { execFile } = require('child_process') as typeof import('child_process')
-  const fs = require('fs') as typeof import('fs')
-  const javaHome = process.env.JAVA_HOME ?? ''
-  const jarExe = javaHome ? join(javaHome, 'bin', 'jar') : 'jar'
 
-  // First list entries and reject any that would escape destDir (Zip Slip guard)
-  await new Promise<void>((res, rej) => {
-    execFile(jarExe, ['tf', jarPath], (err, stdout) => {
-      if (err) { res(); return }
-      const entries = stdout.split('\n').map(e => e.trim()).filter(Boolean)
-      for (const entry of entries) {
-        const dest = resolve(destDir, entry)
-        if (relative(destDir, dest).startsWith('..')) {
-          rej(new Error(`Zip Slip rejected: entry '${entry}' escapes destination`))
-          return
-        }
-      }
-      res()
+  if (process.platform === 'win32') {
+    // Extract to a temp dir via .NET ZipFile (works with any extension, no JDK needed)
+    const tmpDir = `${destDir}_tmp_${Date.now()}`
+    const ps = [
+      'Add-Type -AssemblyName System.IO.Compression.FileSystem',
+      `[System.IO.Compression.ZipFile]::ExtractToDirectory('${jarPath.replace(/'/g, "''")}', '${tmpDir.replace(/'/g, "''")}')`,
+    ].join('; ')
+    await new Promise<void>(res => {
+      execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { timeout: 60_000 }, () => res())
     })
-  }).catch(() => { return })
-
-  await new Promise<void>((res) => {
-    execFile(jarExe, ['xf', jarPath], { cwd: destDir }, (err) => {
-      if (err) { res(); return }
-      for (const ex of exclude) {
-        const p = join(destDir, ex)
-        if (existsSync(p)) {
-          try { fs.rmSync(p, { recursive: true }) } catch { /* ignore */ }
-        }
-      }
-      res()
+    if (existsSync(tmpDir)) {
+      copyNativeFiles(tmpDir, destDir)
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  } else {
+    // unzip -j flattens paths, -o overwrites, select native extensions
+    await new Promise<void>(res => {
+      execFile('unzip', ['-o', '-j', jarPath, '*.so', '*.dylib', '*.jnilib', '-d', destDir], { timeout: 60_000 }, () => res())
     })
-  })
+  }
 }
 
 async function downloadAssets(

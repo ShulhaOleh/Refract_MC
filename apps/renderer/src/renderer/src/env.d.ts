@@ -141,6 +141,11 @@ declare global {
         onProgress: (cb: (data: { projectId: string; step: string; percent: number }) => void) => () => void
         onDone: (cb: (data: { projectId: string; instanceId?: string; error?: string }) => void) => () => void
       }
+      mods: {
+        list:   (instanceId: string) => Promise<Array<{ filename: string; displayName: string; enabled: boolean; sizeKb: number }>>
+        toggle: (instanceId: string, filename: string) => Promise<void>
+        delete: (instanceId: string, filename: string) => Promise<void>
+      }
       mc: {
         versions: () => Promise<import('@refract/core').MinecraftVersion[]>
         java: () => Promise<import('@refract/core').JavaInstallation[]>

@@ -201,6 +201,11 @@ function createBrowserApi(): RefractAPI {
       },
       contentInstall: async () => { throw new Error('Content install requires the Electron app.') },
     },
+    mods: {
+      list:   async () => [],
+      toggle: async () => { throw new Error('Mod management requires the Electron app.') },
+      delete: async () => { throw new Error('Mod management requires the Electron app.') },
+    },
     modpack: {
       install: async () => { throw new Error('Modpack install requires the Electron app.') },
       onProgress: () => () => undefined,
