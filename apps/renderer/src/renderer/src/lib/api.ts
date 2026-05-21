@@ -165,6 +165,7 @@ function createBrowserApi(): RefractAPI {
       delete: async (id) => {
         saveInstances(getInstances().filter((instance) => instance.id !== id))
       },
+      openFolder: async () => undefined,
     },
     window: {
       minimize: () => undefined,

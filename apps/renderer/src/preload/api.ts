@@ -28,11 +28,12 @@ export const api = {
     delete:  (fileName: string)         => ipcRenderer.invoke('theme.delete', fileName),
   },
   instance: {
-    list:      ()                                              => ipcRenderer.invoke('instance.list'),
-    getById:   (id: string)                                   => ipcRenderer.invoke('instance.getById', id),
-    create:    (input: unknown)                               => ipcRenderer.invoke('instance.create', input),
-    update:    (id: string, patch: unknown)                   => ipcRenderer.invoke('instance.update', id, patch),
-    delete:    (id: string, deleteFiles: boolean)             => ipcRenderer.invoke('instance.delete', id, deleteFiles),
+    list:       ()                                              => ipcRenderer.invoke('instance.list'),
+    getById:    (id: string)                                   => ipcRenderer.invoke('instance.getById', id),
+    create:     (input: unknown)                               => ipcRenderer.invoke('instance.create', input),
+    update:     (id: string, patch: unknown)                   => ipcRenderer.invoke('instance.update', id, patch),
+    delete:     (id: string, deleteFiles: boolean)             => ipcRenderer.invoke('instance.delete', id, deleteFiles),
+    openFolder: (id: string)                                   => ipcRenderer.invoke('instance.openFolder', id),
   },
   window: {
     minimize: (): void => ipcRenderer.send('window:minimize'),

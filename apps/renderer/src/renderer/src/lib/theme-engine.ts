@@ -22,6 +22,8 @@ class ThemeEngine {
       }
     }
 
+    const c = colors as Record<string, string>
+
     const directVars: Record<string, string> = {
       'bg-base': 'bg',
       'bg-surface': 'surface',
@@ -39,11 +41,18 @@ class ThemeEngine {
     }
 
     for (const [themeKey, cssVar] of Object.entries(directVars)) {
-      const mappedValue = (colors as Record<string, string>)[themeKey]
+      const mappedValue = c[themeKey]
       if (mappedValue) root.style.setProperty(`--${cssVar}`, mappedValue)
     }
 
-    const accent = (colors as Record<string, string>).accent
+    // Extra derived/optional mappings
+    if (c['bg-base'])    root.style.setProperty('--sb', c['sb'] ?? c['bg-base'])
+    if (c['border'])     { root.style.setProperty('--line', c['line'] ?? c['border']); root.style.setProperty('--sb-line', c['sb-line'] ?? c['border']); root.style.setProperty('--border-2', c['border-2'] ?? c['border']) }
+    if (c['text-muted']) root.style.setProperty('--ink-4', c['ink-4'] ?? c['text-muted'])
+    if (c['checker-1'])  root.style.setProperty('--checker-1', c['checker-1'])
+    if (c['checker-2'])  root.style.setProperty('--checker-2', c['checker-2'])
+
+    const accent = c.accent
     if (accent) root.style.setProperty('--accent-tint', `color-mix(in srgb, ${accent} 18%, transparent)`)
   }
 

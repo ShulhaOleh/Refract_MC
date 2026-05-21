@@ -112,11 +112,12 @@ declare global {
         delete:  (fileName: string) => Promise<void>
       }
       instance: {
-        list:    () => Promise<Instance[]>
-        getById: (id: string) => Promise<Instance | null>
-        create:  (input: CreateInstanceInput) => Promise<Instance>
-        update:  (id: string, patch: Partial<Instance>) => Promise<Instance>
-        delete:  (id: string, deleteFiles: boolean) => Promise<void>
+        list:       () => Promise<Instance[]>
+        getById:    (id: string) => Promise<Instance | null>
+        create:     (input: CreateInstanceInput) => Promise<Instance>
+        update:     (id: string, patch: Partial<Instance>) => Promise<Instance>
+        delete:     (id: string, deleteFiles: boolean) => Promise<void>
+        openFolder: (id: string) => Promise<void>
       }
       window: {
         minimize: () => void

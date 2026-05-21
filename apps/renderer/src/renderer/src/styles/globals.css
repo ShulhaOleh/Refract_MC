@@ -51,6 +51,10 @@
   --accent-lo:   var(--grass-lo);
   --accent-tint: rgba(91,156,58,.15);
 
+  /* Checker background tiles (overridable by themes) */
+  --checker-1: #15161a;
+  --checker-2: #181a1f;
+
   --radius:                  6px;
   --radius-lg:               8px;
   --sidebar-width:           232px;
@@ -68,7 +72,7 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   color: var(--ink);
-  background: #0e0f12;
+  background: var(--bg);
   overflow: hidden;
 }
 
@@ -78,7 +82,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: repeating-conic-gradient(#15161a 0% 25%, #181a1f 0% 50%) 0 0 / 64px 64px;
+  background: repeating-conic-gradient(var(--checker-1) 0% 25%, var(--checker-2) 0% 50%) 0 0 / 64px 64px;
   opacity: .6;
   z-index: 0;
 }

@@ -115,7 +115,7 @@ function PlayButton({ onClick, disabled = false, label = 'PLAY' }: { onClick?: (
   )
 }
 
-function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, canLaunch, isRunning, hasLogs }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; canLaunch: boolean; isRunning: boolean; hasLogs: boolean }) {
+function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFolder, canLaunch, isRunning, hasLogs }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; onOpenFolder: () => void; canLaunch: boolean; isRunning: boolean; hasLogs: boolean }) {
   const label = isRunning ? 'STOP' : instance.isInstalled ? 'PLAY' : 'INSTALL'
   return (
     <div style={{
@@ -213,6 +213,20 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, canLaunch
             }}
           >
             Edit
+          </button>
+          <button
+            onClick={onOpenFolder}
+            title="Open instance folder"
+            style={{
+              width: 40, height: 40, flexShrink: 0,
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border-r)',
+              borderRadius: 3, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16,
+            }}
+          >
+            📁
           </button>
         </div>
       </div>
@@ -589,6 +603,7 @@ function Library() {
                 onEdit={() => setEditTarget(inst)}
                 onConsole={() => setConsoleOpen(inst.id)}
                 onMods={() => setModsTarget(inst)}
+                onOpenFolder={() => api.instance.openFolder(inst.id)}
                 canLaunch={canLaunchMinecraft}
                 isRunning={runningIds.has(inst.id)}
                 hasLogs={(consoleLogs.get(inst.id)?.length ?? 0) > 0}

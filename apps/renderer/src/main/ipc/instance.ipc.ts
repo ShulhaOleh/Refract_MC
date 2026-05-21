@@ -7,6 +7,10 @@ import {
 } from '../services/instance-store'
 import type { CreateInstanceInput, Instance } from '@refract/core'
 import { handleIpc } from './handle'
+import { shell } from 'electron'
+import { join } from 'path'
+import { existsSync, mkdirSync } from 'fs'
+import { paths } from '../services/paths'
 
 export function registerInstanceIpc(): void {
   handleIpc('instance.list', () => listInstances())
@@ -29,4 +33,10 @@ export function registerInstanceIpc(): void {
       deleteInstance(String(id), Boolean(deleteFiles))
     }
   )
+
+  handleIpc('instance.openFolder', (_event, id) => {
+    const gameDir = join(paths.instances, String(id), 'minecraft')
+    if (!existsSync(gameDir)) mkdirSync(gameDir, { recursive: true })
+    shell.openPath(gameDir)
+  })
 }
