@@ -88,6 +88,11 @@ export const api = {
     toggle: (instanceId: string, filename: string, type: string) => ipcRenderer.invoke('mods.toggle', instanceId, filename, type),
     delete: (instanceId: string, filename: string, type: string) => ipcRenderer.invoke('mods.delete', instanceId, filename, type),
   },
+  friends: {
+    list:   ()                    => ipcRenderer.invoke('friends.list'),
+    add:    (username: string)    => ipcRenderer.invoke('friends.add', username),
+    remove: (uuid: string)        => ipcRenderer.invoke('friends.remove', uuid),
+  },
   mc: {
     versions:  (): Promise<import('@refract/core').MinecraftVersion[]> => ipcRenderer.invoke('mc.versions'),
     java:      () => ipcRenderer.invoke('mc.java'),

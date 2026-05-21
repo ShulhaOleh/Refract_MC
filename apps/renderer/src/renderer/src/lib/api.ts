@@ -208,6 +208,11 @@ function createBrowserApi(): RefractAPI {
       toggle: async () => { throw new Error('Mod management requires the Electron app.') },
       delete: async () => { throw new Error('Mod management requires the Electron app.') },
     },
+    friends: {
+      list:   async () => [],
+      add:    async () => { throw new Error('Friends require the Electron app.') },
+      remove: async () => undefined,
+    },
     modpack: {
       install: async () => { throw new Error('Modpack install requires the Electron app.') },
       openFileDialog: async () => null,

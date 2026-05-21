@@ -12,11 +12,15 @@ const NAV: Array<{ to: string; label: string; Icon: ComponentType; exact: boolea
   { to: '/account/',  label: 'Account',           Icon: AccountIcon,  exact: false },
 ]
 
-const FRIENDS = [
-  { name: 'alex_woodland', activity: 'Playing 1.20.2', online: true,  color: '#d4a26a' },
-  { name: 'milly.craft',   activity: 'Idle on Hub',    online: true,  color: '#f0c0d4' },
-  { name: 'joren',         activity: 'Last seen 2h',   online: false, color: '#a08fd8' },
-]
+interface Friend {
+  uuid: string
+  username: string
+  addedAt: number
+}
+
+function crafatarUrl(uuid: string): string {
+  return `https://crafatar.com/avatars/${uuid}?size=32&overlay=true&default=MHF_Steve`
+}
 
 function NavItem({ to, label, Icon, exact }: typeof NAV[number]) {
   const matchRoute = useMatchRoute()
@@ -146,6 +150,247 @@ function AvatarBlock() {
   )
 }
 
+function FriendsPanel() {
+  const [friends, setFriends] = useState<Friend[]>([])
+  const [adding, setAdding] = useState(false)
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    api.friends.list().then(list => setFriends(list as Friend[])).catch(() => {})
+  }, [])
+
+  function startAdd() {
+    setAdding(true)
+    setInput('')
+    setError(null)
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  function cancelAdd() {
+    setAdding(false)
+    setInput('')
+    setError(null)
+  }
+
+  async function submitAdd(e: React.FormEvent) {
+    e.preventDefault()
+    const name = input.trim()
+    if (!name) return
+    setLoading(true)
+    setError(null)
+    try {
+      const friend = await api.friends.add(name) as Friend
+      setFriends(prev => [...prev, friend])
+      setAdding(false)
+      setInput('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add friend.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function removeFriend(uuid: string) {
+    try {
+      await api.friends.remove(uuid)
+      setFriends(prev => prev.filter(f => f.uuid !== uuid))
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px solid var(--sb-line)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px 6px' }}>
+        <h5 style={{ margin: 0, fontSize: 10, fontWeight: 600, letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--ink-4)' }}>
+          Friends{friends.length > 0 && ` · ${friends.length}`}
+        </h5>
+        {!adding && (
+          <button
+            onClick={startAdd}
+            title="Add friend"
+            style={{
+              background: 'none', border: '1px solid var(--border-r)',
+              color: 'var(--ink-4)', cursor: 'pointer',
+              width: 18, height: 18, borderRadius: 3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, lineHeight: 1, padding: 0,
+              transition: 'color .12s, border-color .12s',
+            }}
+            onMouseEnter={e => {
+              const b = e.currentTarget
+              b.style.color = 'var(--accent)'
+              b.style.borderColor = 'var(--accent)'
+            }}
+            onMouseLeave={e => {
+              const b = e.currentTarget
+              b.style.color = 'var(--ink-4)'
+              b.style.borderColor = 'var(--border-r)'
+            }}
+          >
+            +
+          </button>
+        )}
+      </div>
+
+      {/* Add friend form */}
+      {adding && (
+        <form onSubmit={submitAdd} style={{ padding: '0 6px 8px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Minecraft username"
+              disabled={loading}
+              style={{
+                flex: 1, height: 26, fontSize: 11, padding: '0 7px',
+                background: 'var(--bg)', border: '1px solid var(--border-r)',
+                color: 'var(--ink)', borderRadius: 3, outline: 'none',
+                opacity: loading ? 0.6 : 1,
+              }}
+            />
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              style={{
+                height: 26, padding: '0 8px', fontSize: 11, fontWeight: 600,
+                background: loading || !input.trim() ? 'var(--surface-3)' : 'var(--accent)',
+                color: loading || !input.trim() ? 'var(--ink-4)' : '#fff',
+                border: 'none', borderRadius: 3,
+                cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? '…' : 'Add'}
+            </button>
+            <button
+              type="button"
+              onClick={cancelAdd}
+              disabled={loading}
+              style={{
+                height: 26, width: 26, fontSize: 13,
+                background: 'var(--surface-2)', border: '1px solid var(--border-r)',
+                color: 'var(--ink-4)', borderRadius: 3, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          {error && (
+            <div style={{ fontSize: 10, color: 'var(--lava)', lineHeight: 1.3 }}>{error}</div>
+          )}
+        </form>
+      )}
+
+      {/* Friend list */}
+      {friends.length === 0 && !adding ? (
+        <div style={{ padding: '6px 8px 4px', fontSize: 11, color: 'var(--ink-4)', lineHeight: 1.4 }}>
+          No friends added yet.{' '}
+          <button
+            onClick={startAdd}
+            style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, padding: 0 }}
+          >
+            Add one!
+          </button>
+        </div>
+      ) : (
+        friends.map(friend => (
+          <FriendRow key={friend.uuid} friend={friend} onRemove={() => removeFriend(friend.uuid)} />
+        ))
+      )}
+    </div>
+  )
+}
+
+function FriendRow({ friend, onRemove }: { friend: Friend; onRemove: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  const [imgFailed, setImgFailed] = useState(false)
+
+  const addedDaysAgo = Math.floor((Date.now() - friend.addedAt) / (1000 * 60 * 60 * 24))
+  const timeLabel = addedDaysAgo === 0 ? 'Added today' : addedDaysAgo === 1 ? 'Added yesterday' : `Added ${addedDaysAgo}d ago`
+
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '4px 6px', borderRadius: 4,
+        background: hovered ? 'var(--surface-2)' : 'transparent',
+        transition: 'background .1s',
+        position: 'relative',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Avatar */}
+      <div style={{
+        width: 24, height: 24, flexShrink: 0,
+        position: 'relative', overflow: 'hidden',
+        border: '1px solid var(--line)',
+        background: 'var(--surface-3)',
+        imageRendering: 'pixelated',
+      }}>
+        {!imgFailed ? (
+          <img
+            src={crafatarUrl(friend.uuid.replace(/-/g, ''))}
+            alt={friend.username}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }}
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div style={{
+            width: '100%', height: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: "'VT323',monospace", fontSize: 13, color: 'var(--ink-3)',
+          }}>
+            {friend.username[0]?.toUpperCase()}
+          </div>
+        )}
+        {/* Offline indicator */}
+        <div style={{
+          position: 'absolute', right: -2, bottom: -2,
+          width: 7, height: 7,
+          background: 'var(--ink-4)',
+          border: '1px solid var(--sb)',
+        }} />
+      </div>
+
+      {/* Text */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 12, fontWeight: 500, color: 'var(--ink)',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {friend.username}
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--ink-4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {timeLabel}
+        </div>
+      </div>
+
+      {/* Remove */}
+      {hovered && (
+        <button
+          onClick={e => { e.stopPropagation(); onRemove() }}
+          title="Remove friend"
+          style={{
+            position: 'absolute', right: 4,
+            background: 'none', border: 'none',
+            color: 'var(--ink-4)', cursor: 'pointer',
+            fontSize: 12, lineHeight: 1, padding: '2px 4px',
+          }}
+          onMouseEnter={e => { (e.currentTarget).style.color = 'var(--lava)' }}
+          onMouseLeave={e => { (e.currentTarget).style.color = 'var(--ink-4)' }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function Sidebar() {
   return (
     <aside style={{
@@ -163,22 +408,7 @@ export function Sidebar() {
       </nav>
 
       {/* Friends */}
-      <div style={{ margin:'8px 0 0', padding:'10px 4px 4px', borderTop:'1px solid var(--sb-line)' }}>
-        <h5 style={{ margin:'0 0 8px 6px', fontSize:10, fontWeight:600, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--ink-4)' }}>
-          Friends · 2 online
-        </h5>
-        {FRIENDS.map((f, i) => (
-          <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'5px 6px', borderRadius:4 }}>
-            <div style={{ width:20, height:20, background:f.color, border:'1px solid #000', position:'relative', flexShrink:0, imageRendering:'pixelated' }}>
-              <div style={{ position:'absolute', right:-3, bottom:-3, width:7, height:7, background:f.online?'var(--grass)':'var(--ink-4)', border:'1px solid #000' }} />
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', lineHeight:1.1, minWidth:0, flex:1 }}>
-              <span style={{ fontWeight:500, color:'var(--ink)', fontSize:12, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name}</span>
-              <span style={{ fontSize:10.5, color:'var(--ink-4)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.activity}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+      <FriendsPanel />
 
       {/* Bottom */}
       <div style={{ marginTop:'auto', display:'flex', flexDirection:'column', gap:2, paddingTop:10, borderTop:'1px solid var(--sb-line)' }}>

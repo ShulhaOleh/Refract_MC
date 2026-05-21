@@ -150,6 +150,11 @@ declare global {
         toggle: (instanceId: string, filename: string, type: string) => Promise<void>
         delete: (instanceId: string, filename: string, type: string) => Promise<void>
       }
+      friends: {
+        list:   () => Promise<Array<{ uuid: string; username: string; addedAt: number }>>
+        add:    (username: string) => Promise<{ uuid: string; username: string; addedAt: number }>
+        remove: (uuid: string) => Promise<void>
+      }
       mc: {
         versions: () => Promise<import('@refract/core').MinecraftVersion[]>
         java: () => Promise<import('@refract/core').JavaInstallation[]>

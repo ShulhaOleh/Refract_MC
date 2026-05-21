@@ -10,6 +10,7 @@ import { registerModrinthIpc } from './modrinth.ipc'
 import { registerMinecraftIpc } from './minecraft.ipc'
 import { registerModpackIpc } from './modpack.ipc'
 import { registerModsIpc } from './mods.ipc'
+import { registerFriendsIpc } from './friends.ipc'
 
 export function registerAllIpcHandlers(mainWindow: BrowserWindow): void {
   registerLogIpc()
@@ -23,4 +24,5 @@ export function registerAllIpcHandlers(mainWindow: BrowserWindow): void {
   registerMinecraftIpc(mainWindow)
   registerModpackIpc(mainWindow)
   registerModsIpc()
+  registerFriendsIpc()
 }
