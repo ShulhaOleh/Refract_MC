@@ -340,6 +340,11 @@ function EmptyState({ onOpen }: { onOpen: () => void }) {
 }
 
 function CrashReportModal({ instanceName, text, onClose, onOpenConsole }: { instanceName: string; text: string; onClose: () => void; onOpenConsole: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 210, background: 'rgba(0,0,0,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ width: '72vw', maxWidth: 860, height: '75vh', background: '#0d0d0d', border: '1px solid rgba(217,59,59,.6)', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
@@ -362,6 +367,11 @@ function CrashReportModal({ instanceName, text, onClose, onOpenConsole }: { inst
 }
 
 function OnboardingModal({ step, onNext, onClose, onAddAccount, onNewInstance }: { step: number; onNext: () => void; onClose: () => void; onAddAccount: () => void; onNewInstance: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
   const steps = [
     {
       title: 'Welcome to Refract',
@@ -427,6 +437,11 @@ const secondaryBtnStyle: React.CSSProperties = {
 function ConsoleModal({ instanceName, lines, onClose }: { instanceName: string; lines: string[]; onClose: () => void }) {
   const bottomRef = useRef<HTMLDivElement>(null)
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [lines])
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200,
@@ -471,6 +486,11 @@ function ConsoleModal({ instanceName, lines, onClose }: { instanceName: string; 
 }
 
 function NoLicenseModal({ instanceName, onClose }: { instanceName: string; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 210, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ width: 440, background: 'var(--surface)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>

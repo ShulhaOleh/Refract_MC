@@ -194,6 +194,12 @@ function InstallModal({ mod, instances, onClose, onInstall }: InstallModalProps)
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  useEffect(() => {
     setLoadingVersions(true)
     api.modrinth.versions(mod.project_id)
       .then(v => { setVersions(v); setLoadingVersions(false) })
@@ -325,6 +331,17 @@ function ModDetailModal({ mod, onClose, onInstall }: {
   const [detail, setDetail] = useState<ModrinthProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (galleryIndex !== null) setGalleryIndex(null)
+        else onClose()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose, galleryIndex])
 
   useEffect(() => {
     setLoading(true)

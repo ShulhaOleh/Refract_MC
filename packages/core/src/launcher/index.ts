@@ -12,6 +12,7 @@ export interface LaunchContext {
   clientJar: string
   javaExe: string
   memoryMb: number
+  javaArgs?: string
   auth: {
     username: string
     uuid: string
@@ -156,5 +157,6 @@ export function buildLaunchCommand(ctx: LaunchContext): string[] {
     gameArgs = []
   }
 
-  return [ctx.javaExe, ...jvmArgs, mainJson.mainClass, ...gameArgs]
+  const extraJvmArgs = ctx.javaArgs ? ctx.javaArgs.trim().split(/\s+/).filter(Boolean) : []
+  return [ctx.javaExe, ...jvmArgs, ...extraJvmArgs, mainJson.mainClass, ...gameArgs]
 }

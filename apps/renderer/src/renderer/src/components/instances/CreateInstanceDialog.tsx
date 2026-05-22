@@ -33,6 +33,7 @@ interface CreateInput {
   modLoader?: ModLoader
   memoryMb: number
   iconPath?: string
+  groupId?: string
 }
 
 interface Props {
@@ -47,6 +48,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
   const [mcVersion, setMcVersion] = useState('1.21.1')
   const [modLoader, setModLoader] = useState<ModLoader | ''>('')
   const [memoryMb, setMemoryMb]   = useState(2048)
+  const [groupId, setGroupId]     = useState('')
   const [coverImage, setCoverImage] = useState('')
   const [loading, setLoading]     = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -60,6 +62,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
     setMcVersion('1.21.1')
     setModLoader('')
     setMemoryMb(2048)
+    setGroupId('')
     setCoverImage('')
   }
 
@@ -75,7 +78,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
     if (!name.trim()) return
     setLoading(true)
     try {
-      await onCreate({ name: name.trim(), minecraftVersion: mcVersion, modLoader: modLoader || undefined, memoryMb, iconPath: coverImage || undefined })
+      await onCreate({ name: name.trim(), minecraftVersion: mcVersion, modLoader: modLoader || undefined, memoryMb, iconPath: coverImage || undefined, groupId: groupId.trim() || undefined })
       onOpenChange(false)
       reset()
     } finally {
@@ -180,6 +183,16 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
                     </button>
                   ))}
                 </div>
+              </Field>
+
+              <Field label="GROUP">
+                <input
+                  type="text"
+                  value={groupId}
+                  onChange={e => setGroupId(e.target.value)}
+                  placeholder="e.g. Modded, Vanilla, Survival…"
+                  style={inputSt}
+                />
               </Field>
 
               <div style={{ flex:1 }} />

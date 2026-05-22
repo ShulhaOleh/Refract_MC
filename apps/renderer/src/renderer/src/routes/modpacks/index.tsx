@@ -349,6 +349,17 @@ function ContentDetailModal({ project, tab, onClose, onInstall }: {
   const tabInfo   = TABS.find(t => t.type === tab)!
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (galleryIndex !== null) setGalleryIndex(null)
+        else onClose()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose, galleryIndex])
+
+  useEffect(() => {
     setLoading(true)
     fetch(`https://api.modrinth.com/v2/project/${project.project_id}`, {
       headers: { 'User-Agent': 'Refract/1.0 (github.com/ShevRuslan1)', Accept: 'application/json' },
@@ -579,6 +590,12 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
   const [selectedVer, setSelVer]   = useState<string | null>(null)
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  useEffect(() => {
     api.modrinth.versions(project.project_id)
       .then(v => { setVersions(v); setLoading(false) })
       .catch(() => setLoading(false))
@@ -682,6 +699,12 @@ function ModpackInstallModal({ project, onClose, onInstall }: ModpackInstallModa
   const [loading, setLoading]    = useState(true)
   const [name, setName]          = useState(project.title)
   const [selectedVer, setSelVer] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
 
   useEffect(() => {
     api.modrinth.versions(project.project_id)

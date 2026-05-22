@@ -126,6 +126,7 @@ export async function launchInstance(
     clientJar: clientJarPath(instance.minecraftVersion),
     javaExe,
     memoryMb: instance.memoryMb ?? getConfig().defaultMemoryMb ?? 2048,
+    javaArgs: instance.javaArgs,
     auth: {
       username: account.username,
       uuid: account.uuid,

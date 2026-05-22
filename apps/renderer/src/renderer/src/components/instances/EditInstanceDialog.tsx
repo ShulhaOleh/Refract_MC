@@ -47,6 +47,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
   const [pinned, setPinned]       = useState(false)
   const [groupId, setGroupId]     = useState('')
   const [javaPath, setJavaPath]   = useState('')
+  const [javaArgs, setJavaArgs]   = useState('')
   const [javas, setJavas]         = useState<JavaInstallation[]>([])
   const [loading, setLoading]     = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -62,6 +63,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
       setPinned(instance.pinned ?? false)
       setGroupId(instance.groupId ?? '')
       setJavaPath(instance.javaPath ?? '')
+      setJavaArgs(instance.javaArgs ?? '')
       setConfirmDelete(false)
       api.mc.java().then(setJavas).catch(() => setJavas([]))
     }
@@ -83,7 +85,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
     if (!instance || !name.trim()) return
     setLoading(true)
     try {
-      await onSave(instance.id, { name: name.trim(), minecraftVersion: mcVersion, modLoader: modLoader || undefined, memoryMb, iconPath: coverImage || undefined, pinned, groupId: groupId.trim() || undefined, javaPath: javaPath || undefined })
+      await onSave(instance.id, { name: name.trim(), minecraftVersion: mcVersion, modLoader: modLoader || undefined, memoryMb, iconPath: coverImage || undefined, pinned, groupId: groupId.trim() || undefined, javaPath: javaPath || undefined, javaArgs: javaArgs.trim() || undefined })
       onOpenChange(false)
     } finally {
       setLoading(false)
@@ -223,6 +225,16 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                     </option>
                   ))}
                 </select>
+              </Field>
+
+              <Field label="JVM ARGS">
+                <input
+                  type="text"
+                  value={javaArgs}
+                  onChange={e => setJavaArgs(e.target.value)}
+                  placeholder="-XX:+UseG1GC -Dfml.ignoreInvalidMinecraftCertificates=true"
+                  style={inputSt}
+                />
               </Field>
 
               {/* Pin toggle */}
