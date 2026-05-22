@@ -138,6 +138,17 @@ export async function installModpack(
     memoryMb: 4096,
   })
 
+  // Fetch modpack icon from Modrinth and store it on the instance
+  try {
+    const projectInfo = await fetch(`https://api.modrinth.com/v2/project/${projectId}`, {
+      headers: { 'User-Agent': 'Refract/1.0 (github.com/ShevRuslan1)' },
+    }).then(r => r.ok ? r.json() as Promise<{ icon_url?: string | null }> : null)
+    if (projectInfo?.icon_url) {
+      updateInstance(instance.id, { iconPath: projectInfo.icon_url })
+      instance.iconPath = projectInfo.icon_url
+    }
+  } catch { /* non-fatal */ }
+
   const gameDir   = join(resolveInstanceDir(instance.id), 'minecraft')
   mkdirSync(join(gameDir, 'mods'), { recursive: true })
 

@@ -43,7 +43,16 @@ export function TitleBar() {
 
       {/* Logo + breadcrumb */}
       <div style={{ marginLeft:12, display:'flex', alignItems:'center', gap:8 }}>
-        <div style={{ width:14, height:14, background:'linear-gradient(135deg, var(--accent-hi) 0% 50%, var(--accent) 50% 100%)', boxShadow:'inset 0 0 0 1px rgba(0,0,0,.4)' }} />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="-110 -110 220 220" width={16} height={16} style={{ flexShrink:0 }}>
+          <polygon points="0,-92 14,0 0,92 -14,0" fill="#5316D4"/>
+          <polygon points="0,-92 14,0 0,92 -14,0" fill="#3D0FA3" transform="rotate(30)"/>
+          <polygon points="0,-92 14,0 0,92 -14,0" fill="#8A52FF" transform="rotate(60)"/>
+          <polygon points="0,-92 14,0 0,92 -14,0" fill="#3D0FA3" transform="rotate(90)"/>
+          <polygon points="0,-92 14,0 0,92 -14,0" fill="#5316D4" transform="rotate(120)"/>
+          <polygon points="0,-92 14,0 0,92 -14,0" fill="#8A52FF" transform="rotate(150)"/>
+          <circle r="24" fill="#1B044F"/>
+          <circle r="6" fill="#ECE4FF"/>
+        </svg>
         <b style={{ color:'var(--ink)', fontWeight:600 }}>Refract</b>
         {crumb && <span style={{ color:'var(--ink-3)' }}>/ {crumb}</span>}
       </div>

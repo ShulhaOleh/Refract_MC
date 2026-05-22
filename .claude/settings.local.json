@@ -52,7 +52,14 @@
       "Bash(where java *)",
       "PowerShell(& \"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-21.0.11.10-hotspot\\\\bin\\\\java.exe\" -XshowSettings:property -version 2>&1 | Select-Object -First 10)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(python3 *)",
+      "Bash(Select-Object FullName)",
+      "Bash(xargs grep -l \"alex_woodland\\\\|milly.craft\\\\|joren\")",
+      "Bash(echo \"PID: $!\")",
+      "PowerShell(Start-Process \"cmd.exe\" -ArgumentList \"/c cd /d C:\\\\Users\\\\rshev\\\\Projects\\\\mc-launcher\\\\apps\\\\renderer && pnpm dev\" -WindowStyle Normal)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "PowerShell(Start-Process \"cmd.exe\" -ArgumentList \"/k cd /d C:\\\\Users\\\\rshev\\\\Projects\\\\mc-launcher\\\\apps\\\\renderer && pnpm dev\")"
     ]
   }
 }

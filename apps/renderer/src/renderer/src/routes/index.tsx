@@ -130,7 +130,7 @@ function requiredJava(mcVersion: string): number {
   return 8
 }
 
-function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFolder, onServers, onDropJar, canLaunch, isRunning, hasLogs, updateCount, javaOk }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; onOpenFolder: () => void; onServers: () => void; onDropJar: (path: string) => void; canLaunch: boolean; isRunning: boolean; hasLogs: boolean; updateCount: number; javaOk: boolean }) {
+function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFolder, onServers, onDropJar, blockReason, isRunning, hasLogs, updateCount, javaOk }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; onOpenFolder: () => void; onServers: () => void; onDropJar: (path: string) => void; blockReason: 'no-profile' | 'no-license' | null; isRunning: boolean; hasLogs: boolean; updateCount: number; javaOk: boolean }) {
   const [dragOver, setDragOver] = useState(false)
   const label = isRunning ? 'STOP' : instance.isInstalled ? 'PLAY' : 'INSTALL'
   return (
@@ -207,9 +207,14 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
             Minecraft not downloaded yet — click INSTALL to set up.
           </div>
         )}
-        {instance.isInstalled && !canLaunch && (
+        {instance.isInstalled && blockReason === 'no-profile' && (
           <div style={{ fontSize: 11, color: 'var(--gold)', lineHeight: 1.35 }}>
             Sign in or create a profile to play.
+          </div>
+        )}
+        {instance.isInstalled && blockReason === 'no-license' && (
+          <div style={{ fontSize: 11, color: 'var(--gold)', lineHeight: 1.35 }}>
+            Java Edition license required — click Play for details.
           </div>
         )}
         <div style={{ marginTop: 'auto', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -465,6 +470,39 @@ function ConsoleModal({ instanceName, lines, onClose }: { instanceName: string; 
   )
 }
 
+function NoLicenseModal({ instanceName, onClose }: { instanceName: string; onClose: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 210, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <div style={{ width: 440, background: 'var(--surface)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: 18, color: 'var(--gold)', letterSpacing: '.08em' }}>LICENSE REQUIRED</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-4)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
+        </div>
+        <div style={{ padding: '24px 22px' }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', marginBottom: 10 }}>Minecraft Java Edition Required</div>
+          <p style={{ fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.6, margin: '0 0 6px' }}>
+            Your Microsoft account doesn't have a Java Edition license. Purchase Minecraft to play <strong style={{ color: 'var(--ink-2)' }}>{instanceName}</strong>.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--ink-4)', lineHeight: 1.5, margin: '0 0 22px' }}>
+            Already purchased? Sign out and back in from the Accounts page so Refract can re-verify your license.
+          </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => window.open('https://www.minecraft.net/en-us/get-minecraft')}
+              style={primaryBtnStyle}
+            >
+              Buy Minecraft ↗
+            </button>
+            <Link to="/account" onClick={onClose} style={{ ...secondaryBtnStyle, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+              Go to Accounts →
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Library() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Instance | null>(null)
@@ -491,6 +529,7 @@ function Library() {
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null)
   const [crashReport, setCrashReport] = useState<{ instanceId: string; text: string } | null>(null)
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
+  const [noLicenseTarget, setNoLicenseTarget] = useState<Instance | null>(null)
 
   const queryClient = useQueryClient()
   const { data: instances = [], isLoading } = useInstances()
@@ -500,7 +539,8 @@ function Library() {
 
   const clock = useClock()
   const timeStr = clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-  const canLaunchMinecraft = activeAccount != null
+  const hasProfile = activeAccount != null
+  const canPlayMinecraft = activeAccount?.canPlayMinecraft ?? false
 
   useEffect(() => {
     api.auth.active()
@@ -629,9 +669,13 @@ function Library() {
   }
 
   async function handleLaunch(instance: Instance) {
-    if (!canLaunchMinecraft) {
+    if (!hasProfile) {
       setLaunchToast('Create a profile first — go to Accounts and add a guest or Microsoft profile.')
       setTimeout(() => setLaunchToast(null), 3600)
+      return
+    }
+    if (!canPlayMinecraft) {
+      setNoLicenseTarget(instance)
       return
     }
     if (!instance.isInstalled) {
@@ -719,8 +763,12 @@ function Library() {
           <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)', lineHeight: 1 }}>
             <span style={{ color: 'var(--accent)' }}>{activeAccount?.username ?? 'Guest'}</span>
           </div>
-          <div style={{ fontSize: 11, color: canLaunchMinecraft ? 'var(--grass)' : 'var(--gold)', marginTop: 5 }}>
-            {canLaunchMinecraft ? 'Minecraft play enabled' : 'Content access enabled'}
+          <div style={{ fontSize: 11, color: hasProfile && canPlayMinecraft ? 'var(--grass)' : 'var(--gold)', marginTop: 5 }}>
+            {hasProfile && canPlayMinecraft
+              ? 'Minecraft play enabled'
+              : hasProfile
+              ? 'Java Edition license required'
+              : 'Sign in to play Minecraft'}
           </div>
         </div>
         <div style={{ fontFamily: "'VT323',monospace", fontSize: 22, color: 'var(--ink-4)', letterSpacing: '.08em', lineHeight: 1 }}>
@@ -856,7 +904,7 @@ function Library() {
                     }
                     setTimeout(() => setJarToast(null), 3500)
                   }}
-                  canLaunch={canLaunchMinecraft}
+                  blockReason={!hasProfile ? 'no-profile' : !canPlayMinecraft ? 'no-license' : null}
                   isRunning={runningIds.has(inst.id)}
                   hasLogs={(consoleLogs.get(inst.id)?.length ?? 0) > 0}
                   updateCount={updateCounts.get(inst.id) ?? 0}
@@ -1055,6 +1103,13 @@ function Library() {
           />
         )
       })()}
+
+      {noLicenseTarget && (
+        <NoLicenseModal
+          instanceName={noLicenseTarget.name}
+          onClose={() => setNoLicenseTarget(null)}
+        />
+      )}
 
       {onboardingStep !== null && (
         <OnboardingModal

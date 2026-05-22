@@ -87,6 +87,7 @@ function AvatarBlock() {
   const avatar = account ? avatars[account.uuid] : undefined
   const initial = account?.username[0]?.toUpperCase() ?? '?'
 
+
   return (
     <div style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 6px 14px', borderBottom:'1px solid var(--sb-line)', marginBottom:10 }}>
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleImagePick} />
@@ -391,6 +392,21 @@ function FriendRow({ friend, onRemove }: { friend: Friend; onRemove: () => void 
   )
 }
 
+function RefractLogo({ size = 32 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="-110 -110 220 220" width={size} height={size} style={{ flexShrink: 0 }}>
+      <polygon points="0,-92 14,0 0,92 -14,0" fill="#5316D4"/>
+      <polygon points="0,-92 14,0 0,92 -14,0" fill="#3D0FA3" transform="rotate(30)"/>
+      <polygon points="0,-92 14,0 0,92 -14,0" fill="#8A52FF" transform="rotate(60)"/>
+      <polygon points="0,-92 14,0 0,92 -14,0" fill="#3D0FA3" transform="rotate(90)"/>
+      <polygon points="0,-92 14,0 0,92 -14,0" fill="#5316D4" transform="rotate(120)"/>
+      <polygon points="0,-92 14,0 0,92 -14,0" fill="#8A52FF" transform="rotate(150)"/>
+      <circle r="24" fill="#1B044F"/>
+      <circle r="6" fill="#ECE4FF"/>
+    </svg>
+  )
+}
+
 export function Sidebar() {
   return (
     <aside style={{
@@ -399,6 +415,12 @@ export function Sidebar() {
       display:'flex', flexDirection:'column',
       padding:'14px 12px 12px', minHeight:0, overflowY:'auto',
     }}>
+      {/* Brand mark */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 6px 14px', borderBottom:'1px solid var(--sb-line)', marginBottom:12 }}>
+        <RefractLogo size={32} />
+        <span style={{ fontFamily:"'VT323',monospace", fontSize:20, letterSpacing:'.12em', color:'var(--ink)', lineHeight:1 }}>REFRACT</span>
+      </div>
+
       <AvatarBlock />
 
       {/* Nav */}
