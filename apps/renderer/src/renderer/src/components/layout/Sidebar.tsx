@@ -1,10 +1,32 @@
 import { Link, useMatchRoute } from '@tanstack/react-router'
-import { useEffect, useRef, useState, useCallback, type ComponentType } from 'react'
-import { LibraryIcon, ModsIcon, ModpacksIcon, AccountIcon, CogIcon, SignOutIcon } from '../ui/BlockIcons'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { SignOutIcon } from '../ui/BlockIcons'
 import { api, type SafeAccount } from '@/lib/api'
 import { useT } from '@/i18n'
 import type { Instance } from '@refract/core'
-import discordIcon from '@/assets/discord-icon.webp'
+import discordIcon      from '@/assets/discord-icon.webp'
+import libraryIcon      from '@/assets/instance-library.svg'
+import browseModsIcon   from '@/assets/browse-mods.svg'
+import modpacksIcon     from '@/assets/modpacks.svg'
+import accountIcon      from '@/assets/account.svg'
+import settingsIcon     from '@/assets/settings.svg'
+
+function NavIcon({ src, size = 18 }: { src: string; size?: number }) {
+  return (
+    <div style={{
+      width: size, height: size, flexShrink: 0,
+      background: 'currentColor',
+      WebkitMaskImage: `url(${src})`,
+      WebkitMaskSize: 'contain',
+      WebkitMaskRepeat: 'no-repeat',
+      WebkitMaskPosition: 'center',
+      maskImage: `url(${src})`,
+      maskSize: 'contain',
+      maskRepeat: 'no-repeat',
+      maskPosition: 'center',
+    }} />
+  )
+}
 
 interface Friend {
   uuid: string
@@ -20,8 +42,8 @@ function avatarUrl(uuid: string, fallback = false): string {
     : `https://mc-heads.net/avatar/${id}/32`
 }
 
-interface NavItemProps { to: string; label: string; Icon: ComponentType; exact: boolean }
-function NavItem({ to, label, Icon, exact }: NavItemProps) {
+interface NavItemProps { to: string; label: string; iconSrc: string; exact: boolean }
+function NavItem({ to, label, iconSrc, exact }: NavItemProps) {
   const matchRoute = useMatchRoute()
   const active = !!matchRoute({ to: to as '/', fuzzy: !exact })
 
@@ -40,9 +62,7 @@ function NavItem({ to, label, Icon, exact }: NavItemProps) {
       }}
     >
       {active && <div style={{ position:'absolute', left:-13, top:6, bottom:6, width:3, background:'var(--accent)' }} />}
-      <div style={{ width:18, height:18, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <Icon />
-      </div>
+      <NavIcon src={iconSrc} />
       <span>{label}</span>
     </Link>
   )
@@ -453,10 +473,10 @@ function RefractLogo({ size = 32 }: { size?: number }) {
 export function Sidebar() {
   const t = useT()
   const navItems: NavItemProps[] = [
-    { to: '/',          label: t.nav.library, Icon: LibraryIcon,  exact: true  },
-    { to: '/browse/',   label: t.nav.browse,  Icon: ModsIcon,     exact: false },
-    { to: '/modpacks/', label: t.nav.content, Icon: ModpacksIcon, exact: false },
-    { to: '/account/',  label: t.nav.account, Icon: AccountIcon,  exact: false },
+    { to: '/',          label: t.nav.library, iconSrc: libraryIcon,    exact: true  },
+    { to: '/browse/',   label: t.nav.browse,  iconSrc: browseModsIcon, exact: false },
+    { to: '/modpacks/', label: t.nav.content, iconSrc: modpacksIcon,   exact: false },
+    { to: '/account/',  label: t.nav.account, iconSrc: accountIcon,    exact: false },
   ]
   return (
     <aside style={{
@@ -485,7 +505,7 @@ export function Sidebar() {
       {/* Bottom */}
       <div style={{ marginTop:'auto', display:'flex', flexDirection:'column', gap:2, paddingTop:10, borderTop:'1px solid var(--sb-line)' }}>
         <Link to="/settings" style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:4, color:'var(--ink-2)', fontSize:13, fontWeight:500, textDecoration:'none', border:'1px solid transparent' }}>
-          <div style={{ width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center' }}><CogIcon /></div>
+          <NavIcon src={settingsIcon} />
           <span>{t.nav.settings}</span>
         </Link>
         <button
