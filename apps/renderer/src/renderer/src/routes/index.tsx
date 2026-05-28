@@ -366,11 +366,27 @@ function EmptyState({ onOpen }: { onOpen: () => void }) {
 
 function CrashReportModal({ instanceName, text, onClose, onOpenConsole }: { instanceName: string; text: string; onClose: () => void; onOpenConsole: () => void }) {
   const t = useT()
+  const [copied, setCopied] = useState(false)
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
+
+  useEffect(() => {
+    navigator.clipboard?.writeText(text).catch(() => {})
+    setCopied(true)
+    const id = setTimeout(() => setCopied(false), 2500)
+    return () => clearTimeout(id)
+  }, [text])
+
+  function copyNow() {
+    navigator.clipboard?.writeText(text).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 210, background: 'rgba(0,0,0,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ width: '72vw', maxWidth: 860, height: '75vh', background: '#0d0d0d', border: '1px solid rgba(217,59,59,.6)', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
@@ -378,8 +394,12 @@ function CrashReportModal({ instanceName, text, onClose, onOpenConsole }: { inst
           <div>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: 18, color: '#ff6b6b', letterSpacing: '.1em' }}>{t.home.crashTitle}</span>
             <span style={{ fontSize: 12, color: 'var(--ink-4)', marginLeft: 12 }}>{instanceName}</span>
+            {copied && <span style={{ fontSize: 11, color: 'var(--grass)', marginLeft: 10 }}>Copied to clipboard</span>}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={copyNow} style={{ height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700, background: copied ? 'var(--grass)' : 'var(--surface-2)', color: copied ? '#fff' : 'var(--ink)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer', transition: 'background .15s' }}>
+              {copied ? 'Copied!' : 'Copy Log'}
+            </button>
             <button onClick={onOpenConsole} style={{ height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700, background: 'var(--surface-2)', color: 'var(--ink)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer' }}>{t.home.viewConsole}</button>
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-4)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
           </div>
