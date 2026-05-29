@@ -14,6 +14,11 @@ asarUnpack:
 win:
   executableName: refract
   icon: build/icon.png
+  # Code signing: set CSC_LINK (base64-encoded .p12) and CSC_KEY_PASSWORD in
+  # GitHub Secrets. electron-builder picks them up automatically.
+  # For Azure Trusted Signing (free for open-source), set AZURE_TENANT_ID,
+  # AZURE_CLIENT_ID, AZURE_CLIENT_SECRET and use the sign hook below.
+  # sign: ./build/sign-windows.js
 nsis:
   artifactName: ${productName}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -22,9 +27,20 @@ nsis:
 mac:
   icon: build/icon.png
   entitlementsInherit: build/entitlements.mac.plist
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  # Notarization: set APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
+  # in GitHub Secrets. electron-builder reads these automatically.
+  # notarize:
+  #   teamId: XXXXXXXXXX
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+dmg:
+  artifactName: ${productName}-${version}.${ext}
 linux:
   target:
     - AppImage
