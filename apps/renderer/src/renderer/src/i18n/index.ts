@@ -1,6 +1,6 @@
 import { useLanguageStore } from '@/stores/language'
-import enJson from './locales/en.json'
-import ukJson from './locales/uk.json'
+import enJson from '@locales/en.json'
+import ukJson from '@locales/uk.json'
 
 type Locale = typeof enJson
 
