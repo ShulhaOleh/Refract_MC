@@ -30,7 +30,9 @@ function parseReleaseBody(body: string): string[] {
   const notes: string[] = []
   for (const raw of (body ?? '').split('\n')) {
     const line = raw.trim()
-    if (line.startsWith('- ') || line.startsWith('* ')) notes.push(line.slice(2).trim())
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      notes.push(line.slice(2).trim().replace(/\*\*/g, ''))
+    }
   }
   return notes
 }
