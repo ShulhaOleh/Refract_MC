@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef, type ChangeEvent, createPortal } from 'react'
+import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '@/lib/api'
 import { compressImage } from '@/lib/image'
 import type { Instance } from '@refract/core'

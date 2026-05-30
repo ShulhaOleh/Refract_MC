@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import type React from 'react'
 import { SearchIcon } from '@/components/ui/BlockIcons'
 import { api } from '@/lib/api'
-import type { ModrinthProject, ModrinthVersion, Instance, CFProject, CFFile } from '@refract/core'
+import type { ModrinthProject, ModrinthVersion, ModrinthSortIndex, Instance, CFProject, CFFile } from '@refract/core'
 import { useT } from '@/i18n'
 
 export const Route = createFileRoute('/browse/')({
@@ -12,6 +12,13 @@ export const Route = createFileRoute('/browse/')({
 
 const CATEGORIES = ['All', 'Performance', 'Utility', 'Magic', 'Technology', 'Adventure', 'Decoration']
 const LOADERS = ['All', 'fabric', 'forge', 'quilt', 'neoforge']
+const SORT_OPTIONS: Array<{ label: string; value: ModrinthSortIndex }> = [
+  { label: 'Most Downloaded',  value: 'downloads' },
+  { label: 'Most Followed',    value: 'follows'   },
+  { label: 'Newest',           value: 'newest'    },
+  { label: 'Recently Updated', value: 'updated'   },
+  { label: 'Relevance',        value: 'relevance' },
+]
 const LOADER_COLOR: Record<string, string> = {
   fabric: '#b8a892', forge: '#4b8fc4', quilt: '#b070b0', neoforge: '#e8883c',
 }
@@ -91,6 +98,53 @@ function versionCompatibility(v: ModrinthVersion, instance: Instance | null): 'c
 }
 
 // ─── VersionDropdown ──────────────────────────────────────────────────────────
+
+function SortDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
+  }, [])
+
+  const current = SORT_OPTIONS.find(o => o.value === value) ?? SORT_OPTIONS[0]
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontSize: 12, fontWeight: 600, color: 'var(--ink)',
+        background: 'var(--surface)', border: '1px solid var(--border-r)',
+        borderRadius: 3, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap',
+      }}>
+        {current.label}
+        <span style={{ fontSize: 9, opacity: .7 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 40,
+          background: 'var(--surface)', border: '1px solid var(--border-r)',
+          borderRadius: 'var(--radius)', boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+          minWidth: 180, display: 'flex', flexDirection: 'column',
+        }}>
+          {SORT_OPTIONS.map(opt => (
+            <button key={opt.value} onClick={() => { onChange(opt.value); setOpen(false) }} style={{
+              padding: '8px 14px', textAlign: 'left', border: 'none',
+              fontSize: 12, fontWeight: 500,
+              color: value === opt.value ? 'var(--accent)' : 'var(--ink-2)',
+              background: value === opt.value ? 'var(--accent-tint)' : 'transparent',
+              cursor: 'pointer',
+            }}>{opt.label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function VersionDropdown({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
   const t = useT()
@@ -578,6 +632,7 @@ function Browse() {
   const [category, setCategory] = useState('All')
   const [loader, setLoader] = useState('All')
   const [gameVersion, setGameVersion] = useState<string | null>(null)
+  const [sort, setSort] = useState<ModrinthSortIndex>('downloads')
   const [results, setResults] = useState<ModrinthProject[]>([])
   const [cfResults, setCfResults] = useState<CFProject[]>([])
   const [loading, setLoading] = useState(false)
@@ -604,7 +659,7 @@ function Browse() {
     if (searchRef.current) clearTimeout(searchRef.current)
     searchRef.current = setTimeout(() => doSearch(0), query ? 400 : 0)
     return () => { if (searchRef.current) clearTimeout(searchRef.current) }
-  }, [query, category, loader, gameVersion, source, cfApiKey])
+  }, [query, category, loader, gameVersion, sort, source, cfApiKey])
 
   async function doSearch(newOffset: number) {
     setLoading(true)
@@ -617,9 +672,16 @@ function Browse() {
         setCfResults(cfRes.data)
         setTotal(cfRes.pagination.totalCount)
       } else {
-        const gameLoader = loader !== 'All' ? loader : undefined
-        const facetCat = category !== 'All' ? category.toLowerCase() : undefined
-        const res = await api.modrinth.search(query, gameVersion ?? undefined, gameLoader, facetCat, LIMIT, newOffset)
+        const res = await api.modrinth.searchContent({
+          query: query || '',
+          projectType: 'mod',
+          gameVersion: gameVersion ?? undefined,
+          loader: loader !== 'All' ? loader : undefined,
+          category: category !== 'All' ? category.toLowerCase() : undefined,
+          sortIndex: sort,
+          limit: LIMIT,
+          offset: newOffset,
+        })
         setResults(res.hits)
         setTotal(res.total_hits)
       }
@@ -736,6 +798,7 @@ function Browse() {
             )}
             {source === 'mr' && <div style={{ width: 1, height: 18, background: 'var(--border-r)' }} />}
             <VersionDropdown value={gameVersion} onChange={v => { setGameVersion(v); setOffset(0) }} />
+            {source === 'mr' && <SortDropdown value={sort} onChange={s => { setSort(s as ModrinthSortIndex); setOffset(0) }} />}
             <div style={{ width: 1, height: 18, background: 'var(--border-r)' }} />
             <div style={{ display: 'flex', gap: 4 }}>
               {LOADERS.map(l => (
