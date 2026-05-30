@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react'
+import { useState, useEffect, useCallback, useRef, type ChangeEvent, createPortal } from 'react'
 import { api } from '@/lib/api'
 import { compressImage } from '@/lib/image'
 import type { Instance } from '@refract/core'
@@ -325,7 +325,7 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
         background: 'rgba(0,0,0,.65)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
-      onClick={() => onOpenChange(false)}
+      onClick={e => { if (e.target === e.currentTarget) onOpenChange(false) }}
     >
       <div
         style={{
@@ -704,14 +704,15 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
           ))}
         </div>
 
-        {/* Screenshot lightbox — must stay inside the stopPropagation div */}
-        {lightbox && (
+        {/* Screenshot lightbox rendered via portal to escape overflow:hidden and stacking context */}
+        {lightbox && createPortal(
           <ScreenshotLightbox
             shot={lightbox}
             instanceId={instance.id}
             onClose={() => setLightbox(null)}
             onOpenExternal={() => { api.mc.openScreenshot(instance.id, lightbox.filename).catch(() => {}); setLightbox(null) }}
-          />
+          />,
+          document.body
         )}
       </div>
     </div>
