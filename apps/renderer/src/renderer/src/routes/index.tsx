@@ -1136,19 +1136,21 @@ function Library() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           {/* What's New */}
           <Panel title={t.home.whatsNew}>
-            {whatsNew.slice(0, 4).map(item => (
-              <div key={item.version} style={{ padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ fontFamily: "'VT323',monospace", fontSize: 13, color: 'var(--accent)', letterSpacing: '.06em' }}>v{item.version}</span>
-                  {item.date && <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{item.date}</span>}
+            <div style={{ maxHeight: 260, overflowY: 'auto', marginRight: -6, paddingRight: 6 }}>
+              {whatsNew.map(item => (
+                <div key={item.version} style={{ padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontFamily: "'VT323',monospace", fontSize: 13, color: 'var(--accent)', letterSpacing: '.06em' }}>v{item.version}</span>
+                    {item.date && <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{item.date}</span>}
+                  </div>
+                  <ul style={{ margin: '3px 0 0', paddingLeft: 14, listStyle: 'disc' }}>
+                    {item.notes.map((n, i) => (
+                      <li key={i} style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>{n}</li>
+                    ))}
+                  </ul>
                 </div>
-                <ul style={{ margin: '3px 0 0', paddingLeft: 14, listStyle: 'disc' }}>
-                  {item.notes.slice(0, 3).map((n, i) => (
-                    <li key={i} style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>{n}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+              ))}
+            </div>
           </Panel>
 
           {/* Activity */}
