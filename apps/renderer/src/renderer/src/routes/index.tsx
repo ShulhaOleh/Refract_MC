@@ -20,36 +20,28 @@ export const Route = createFileRoute('/')({
 
 type ActiveAccount = Awaited<ReturnType<typeof api.auth.active>>
 
-const RELEASES_URL = 'https://api.github.com/repos/RefractMC/Refract_MC/releases'
+const CHANGELOG_URL = 'https://raw.githubusercontent.com/RefractMC/Refract_MC/main/CHANGELOG.md'
 
 interface ChangelogEntry { version: string; notes: string[]; date?: string }
 
-type GitHubRelease = { tag_name: string; name: string; body: string; published_at: string; draft: boolean; prerelease: boolean }
-
-function parseReleaseBody(body: string): string[] {
-  const notes: string[] = []
-  for (const raw of (body ?? '').split('\n')) {
+function parseChangelog(text: string): ChangelogEntry[] {
+  const entries: ChangelogEntry[] = []
+  let current: { version: string; notes: string[] } | null = null
+  for (const raw of text.split('\n')) {
     const line = raw.trim()
-    if (line.startsWith('- ') || line.startsWith('* ')) {
-      notes.push(line.slice(2).trim().replace(/\*\*/g, ''))
+    if (line.startsWith('## ')) {
+      if (current && current.notes.length > 0) entries.push(current)
+      current = { version: line.slice(3).trim(), notes: [] }
+    } else if (current && (line.startsWith('- ') || line.startsWith('* '))) {
+      current.notes.push(line.slice(2).trim().replace(/\*\*/g, ''))
     }
   }
-  return notes
-}
-
-function releasesToChangelog(releases: GitHubRelease[]): ChangelogEntry[] {
-  return releases
-    .filter(r => !r.draft && !r.prerelease)
-    .map(r => ({
-      version: r.tag_name.replace(/^v/, ''),
-      notes: parseReleaseBody(r.body),
-      date: r.published_at ? new Date(r.published_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
-    }))
-    .filter(e => e.notes.length > 0)
+  if (current && current.notes.length > 0) entries.push(current)
+  return entries
 }
 
 const FALLBACK_WHATS_NEW: ChangelogEntry[] = [
-  { version: '1.0.0', notes: ['First stable release', 'Windows installer + Linux AppImage & .deb', 'Discord Rich Presence with instance name and playtime', 'MultiMC / Prism instance import', 'Java Manager with auto-download and remove', 'Notifications panel in title bar'] },
+  { version: '1.0.4', notes: ['Custom accent color', 'Bulk mod operations', 'JVM performance presets', 'World backup', 'Screenshot lightbox', 'CurseForge modpacks', 'Sort in Browse Mods', 'Page jump in pagination', 'Custom instance location', 'Custom Java path'] },
 ]
 
 type ActivityEntry = { id: string; label: string; ts: number }
@@ -657,12 +649,12 @@ function Library() {
       .catch(() => setActivity([]))
   }, [])
 
-  // Fetch releases from GitHub
+  // Fetch CHANGELOG.md directly — always accurate, no CI dependency
   useEffect(() => {
-    fetch(RELEASES_URL, { headers: { Accept: 'application/vnd.github+json' } })
-      .then(r => r.ok ? r.json() as Promise<GitHubRelease[]> : Promise.reject())
-      .then(releases => {
-        const entries = releasesToChangelog(releases)
+    fetch(CHANGELOG_URL)
+      .then(r => r.ok ? r.text() : Promise.reject())
+      .then(text => {
+        const entries = parseChangelog(text)
         if (entries.length) setWhatsNew(entries)
       })
       .catch(() => { /* keep fallback */ })
