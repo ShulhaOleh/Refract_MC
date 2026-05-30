@@ -399,7 +399,7 @@ function ContentDetailModal({ project, tab, onClose, onInstall }: {
   return (
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 75, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={onClose}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
         onClick={e => e.stopPropagation()}
@@ -553,7 +553,7 @@ function ContentDetailModal({ project, tab, onClose, onInstall }: {
       {galleryIndex !== null && gallery[galleryIndex] && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setGalleryIndex(null)}
+          onClick={e => { e.stopPropagation(); setGalleryIndex(null) }}
         >
           <img
             src={gallery[galleryIndex].url}
