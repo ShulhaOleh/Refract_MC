@@ -356,25 +356,29 @@ export function logoutAccount(uuid: string): void {
   saveConfig(config)
 }
 
-// Ely.by uses /auth/* instead of the standard /authserver/* paths.
-// Try the standard Yggdrasil path first; if it returns 404, fall back to /auth/*.
+// Ely.by uses /auth/* instead of the standard Yggdrasil /authserver/* paths.
+// Try both; retry on any "not found"-like response, throw immediately on real auth errors.
 async function yggdrasilPost<T>(base: string, action: 'authenticate' | 'refresh', body: object): Promise<T> {
   const paths = [`/authserver/${action}`, `/auth/${action}`]
-  let lastErr: unknown
+  let lastErr: Error = new Error('Authentication endpoint not found. Check the server URL.')
   for (const path of paths) {
-    try {
-      const url = `${base}${path}`
-      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (r.status === 404) { lastErr = new Error(`404 at ${url}`); continue }
-      if (!r.ok) {
-        let msg = r.statusText
-        try { const j = await r.json() as { errorMessage?: string }; msg = j.errorMessage ?? msg } catch { /* ignore */ }
-        throw new Error(msg)
-      }
-      return await r.json() as T
-    } catch (e) { lastErr = e; if ((e as Error).message?.startsWith('404')) continue; throw e }
+    const r = await fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!r.ok) {
+      let msg = r.statusText
+      try { const j = await r.json() as { errorMessage?: string }; msg = j.errorMessage ?? msg } catch { /* ignore */ }
+      lastErr = new Error(msg)
+      const lc = msg.toLowerCase()
+      // Retry on endpoint-not-found responses (404 status or "not found" message body)
+      if (r.status === 404 || lc.includes('not found') || lc.includes('page not found')) continue
+      throw lastErr  // Real auth error — wrong credentials, etc.
+    }
+    return await r.json() as T
   }
-  throw lastErr ?? new Error('Authentication endpoint not found. Check the server URL.')
+  throw lastErr
 }
 
 export async function loginYggdrasil(serverUrl: string, username: string, password: string): Promise<SafeAccount> {
