@@ -127,8 +127,8 @@ export async function getOrRefreshMinecraftToken(accountUuid: string): Promise<{
     }
     if (account.encryptedAccessToken && account.encryptedRefreshToken && account.yggdrasilServer) {
       try {
-        const refreshed = await postJson<{ accessToken: string; clientToken: string }>(
-          `${account.yggdrasilServer}/authserver/refresh`,
+        const refreshed = await yggdrasilPost<{ accessToken: string; clientToken: string }>(
+          account.yggdrasilServer, 'refresh',
           { accessToken: decrypt(account.encryptedAccessToken), clientToken: decrypt(account.encryptedRefreshToken) }
         )
         account.encryptedAccessToken = encrypt(refreshed.accessToken)
@@ -356,16 +356,37 @@ export function logoutAccount(uuid: string): void {
   saveConfig(config)
 }
 
+// Ely.by uses /auth/* instead of the standard /authserver/* paths.
+// Try the standard Yggdrasil path first; if it returns 404, fall back to /auth/*.
+async function yggdrasilPost<T>(base: string, action: 'authenticate' | 'refresh', body: object): Promise<T> {
+  const paths = [`/authserver/${action}`, `/auth/${action}`]
+  let lastErr: unknown
+  for (const path of paths) {
+    try {
+      const url = `${base}${path}`
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      if (r.status === 404) { lastErr = new Error(`404 at ${url}`); continue }
+      if (!r.ok) {
+        let msg = r.statusText
+        try { const j = await r.json() as { errorMessage?: string }; msg = j.errorMessage ?? msg } catch { /* ignore */ }
+        throw new Error(msg)
+      }
+      return await r.json() as T
+    } catch (e) { lastErr = e; if ((e as Error).message?.startsWith('404')) continue; throw e }
+  }
+  throw lastErr ?? new Error('Authentication endpoint not found. Check the server URL.')
+}
+
 export async function loginYggdrasil(serverUrl: string, username: string, password: string): Promise<SafeAccount> {
   const base = serverUrl.trim().replace(/\/+$/, '')
   if (!base) throw new Error('Auth server URL is required.')
 
   const clientToken = randomUUID()
-  const res = await postJson<{
+  const res = await yggdrasilPost<{
     accessToken: string
     clientToken: string
     selectedProfile?: { id: string; name: string }
-  }>(`${base}/authserver/authenticate`, {
+  }>(base, 'authenticate', {
     agent: { name: 'Minecraft', version: 1 },
     username,
     password,
