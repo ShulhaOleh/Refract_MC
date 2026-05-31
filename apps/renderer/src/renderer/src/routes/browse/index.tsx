@@ -99,6 +99,71 @@ function versionCompatibility(v: ModrinthVersion, instance: Instance | null): 'c
 
 // ─── VersionDropdown ──────────────────────────────────────────────────────────
 
+function InstanceDropdown({ instances, value, onChange }: {
+  instances: Instance[]
+  value: Instance | null
+  onChange: (inst: Instance | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
+  }, [])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontSize: 12, fontWeight: 600,
+        color: value ? 'var(--ink)' : 'var(--ink-4)',
+        background: value ? 'var(--accent-tint)' : 'var(--surface)',
+        border: `1px solid ${value ? 'var(--accent)' : 'var(--border-r)'}`,
+        borderRadius: 3, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap',
+      }}>
+        {value
+          ? <><span style={{ color: 'var(--ink-4)', fontSize: 10, fontWeight: 400 }}>instance:</span> {value.name}</>
+          : 'Check against instance…'}
+        <span style={{ fontSize: 9, opacity: .7 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 40,
+          background: 'var(--surface)', border: '1px solid var(--border-r)',
+          borderRadius: 'var(--radius)', boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+          minWidth: 220, maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column',
+        }}>
+          <button onClick={() => { onChange(null); setOpen(false) }} style={{
+            padding: '8px 14px', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--line)',
+            fontSize: 12, color: !value ? 'var(--accent)' : 'var(--ink-3)',
+            background: !value ? 'var(--accent-tint)' : 'transparent', cursor: 'pointer',
+          }}>
+            None (show all)
+          </button>
+          {instances.map(inst => (
+            <button key={inst.id} onClick={() => { onChange(inst); setOpen(false) }} style={{
+              padding: '8px 14px', textAlign: 'left', border: 'none',
+              fontSize: 12, fontWeight: 500,
+              color: value?.id === inst.id ? 'var(--accent)' : 'var(--ink-2)',
+              background: value?.id === inst.id ? 'var(--accent-tint)' : 'transparent',
+              cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 2,
+            }}>
+              <span>{inst.name}</span>
+              <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: "'VT323',monospace", letterSpacing: '.06em' }}>
+                MC {inst.minecraftVersion} · {inst.modLoader?.toUpperCase() ?? 'VANILLA'}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SortDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -656,24 +721,42 @@ function Browse() {
     api.config.get().then(cfg => setCfApiKey((cfg as { curseforgeApiKey?: string }).curseforgeApiKey ?? null)).catch(() => {})
   }, [])
 
+  // When instance changes: re-fetch fresh data, apply version+loader filters, check updates
   useEffect(() => {
     if (!activeInstance) { setInstanceUpdates({}); return }
-    api.modrinth.checkModUpdates(activeInstance.id)
-      .then(updates => {
-        const map: Record<string, boolean> = {}
-        updates.forEach(u => { map[u.projectId] = u.hasUpdate })
-        setInstanceUpdates(map)
+
+    // Apply instance filters automatically
+    setGameVersion(activeInstance.minecraftVersion)
+    setLoader(activeInstance.modLoader ? activeInstance.modLoader.toLowerCase() : 'All')
+    setOffset(0)
+
+    // Re-fetch to get latest mods array
+    api.instance.getById(activeInstance.id)
+      .then(fresh => {
+        if (!fresh) return
+        setActiveInstance(fresh)
+        // Build set of installed Modrinth project IDs
+        const installed = new Set((fresh.mods ?? []).map(m => m.projectId))
+        // Check for updates
+        api.modrinth.checkModUpdates(fresh.id)
+          .then(updates => {
+            const map: Record<string, boolean> = {}
+            updates.filter(u => installed.has(u.projectId)).forEach(u => { map[u.projectId] = u.hasUpdate })
+            setInstanceUpdates(map)
+          })
+          .catch(() => setInstanceUpdates({}))
       })
       .catch(() => setInstanceUpdates({}))
-  }, [activeInstance])
+  }, [activeInstance?.id]) // only re-run when the instance ID changes
 
   function getModStatus(mod: ModrinthProject): 'installed' | 'update' | 'incompatible' | null {
     if (!activeInstance) return null
-    const installed = activeInstance.mods?.some(m => m.projectId === mod.project_id) ?? false
+    const installedProjectIds = new Set((activeInstance.mods ?? []).map(m => m.projectId))
+    const installed = installedProjectIds.has(mod.project_id)
     if (installed) return instanceUpdates[mod.project_id] ? 'update' : 'installed'
     const mcOk = !mod.game_versions?.length || mod.game_versions.includes(activeInstance.minecraftVersion)
-    const loader = activeInstance.modLoader?.toLowerCase()
-    const loaderOk = !loader || !mod.loaders?.length || mod.loaders.some(l => l.toLowerCase() === loader)
+    const instLoader = activeInstance.modLoader?.toLowerCase()
+    const loaderOk = !instLoader || !mod.loaders?.length || mod.loaders.some(l => l.toLowerCase() === instLoader)
     return (!mcOk || !loaderOk) ? 'incompatible' : null
   }
 
@@ -812,22 +895,19 @@ function Browse() {
 
           {/* Instance selector */}
           {instances.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius)', padding: '0 12px', height: 36, flexShrink: 0 }}>
-              <span style={{ fontSize: 11, color: 'var(--ink-4)', fontWeight: 600, whiteSpace: 'nowrap' }}>Check against:</span>
-              <select
-                value={activeInstance?.id ?? ''}
-                onChange={e => {
-                  const inst = instances.find(i => i.id === e.target.value) ?? null
+            <InstanceDropdown
+              instances={instances}
+              value={activeInstance}
+              onChange={inst => {
+                if (!inst) {
+                  setActiveInstance(null)
+                  setGameVersion(null)
+                  setLoader('All')
+                } else {
                   setActiveInstance(inst)
-                }}
-                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, color: 'var(--ink)', cursor: 'pointer', minWidth: 120 }}
-              >
-                <option value="">None</option>
-                {instances.map(i => (
-                  <option key={i.id} value={i.id}>{i.name}</option>
-                ))}
-              </select>
-            </div>
+                }
+              }}
+            />
           )}
 
           {/* Filters */}
