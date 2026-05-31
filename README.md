@@ -11,7 +11,7 @@
   </a>
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-5316D4?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/Minecraft-Java%20Edition-5316D4?style=flat-square" alt="Minecraft" />
-  <a href="https://discord.gg/7Q5sGzhUQJ">
+  <a href="https://discord.gg/7Q5sGzhUQJ](https://discord.gg/SUPuuTjMGU">
     <img src="https://img.shields.io/badge/Discord-Join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord" />
   </a>
 </p>
