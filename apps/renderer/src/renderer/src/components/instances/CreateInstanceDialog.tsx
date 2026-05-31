@@ -50,10 +50,9 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
   const [maxRamGb, setMaxRamGb]       = useState(16)
 
   useEffect(() => {
-    const fn = (api.system as { ramGb?: () => Promise<number> } | undefined)?.ramGb
-    if (typeof fn === 'function') {
-      fn().then(gb => setMaxRamGb(Math.max(4, gb))).catch(() => {})
-    }
+    // Direct window.api call to bypass wrapApi typing issues
+    const sysApi = (window as unknown as { api?: { system?: { ramGb?: () => Promise<number> } } }).api?.system
+    sysApi?.ramGb?.()?.then(gb => setMaxRamGb(Math.max(4, gb ?? 16))).catch(() => {})
   }, [])
 
   function reset() {
