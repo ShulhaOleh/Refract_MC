@@ -120,7 +120,7 @@ export function TitleBar() {
           <circle r="24" fill="#1B044F"/>
           <circle r="6" fill="#ECE4FF"/>
         </svg>
-        <b style={{ color: 'var(--ink)', fontWeight: 600 }}>Refract</b>
+        <b style={{ color: 'var(--ink)', fontWeight: 600 }}>Refract Launcher</b>
         {crumb && <span style={{ color: 'var(--ink-3)' }}>/ {crumb}</span>}
       </div>
 
