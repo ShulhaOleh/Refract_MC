@@ -957,15 +957,22 @@ function Library() {
                 onClick={() => setCreateOpen(true)}
                 style={{
                   marginLeft: isGroupedView ? 0 : 4,
-                  fontSize: 11, fontWeight: 600,
-                  color: 'var(--ink-2)',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border-r)',
-                  borderRadius: 3,
-                  padding: '3px 10px',
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: 13, fontWeight: 700,
+                  color: '#fff',
+                  background: 'var(--accent)',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '8px 18px',
                   cursor: 'pointer',
+                  boxShadow: '0 2px 8px var(--accent-tint), inset 0 -2px 0 var(--accent-lo)',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  transition: 'transform 100ms, box-shadow 100ms',
                 }}
+                onMouseEnter={e => { (e.currentTarget).style.transform = 'translateY(-1px)' }}
+                onMouseLeave={e => { (e.currentTarget).style.transform = 'none' }}
               >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                 {t.home.newBtn}
               </button>
             </div>
