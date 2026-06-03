@@ -793,6 +793,7 @@ function Browse() {
   const [category, setCategory] = useState('All')
   const [loader, setLoader] = useState('All')
   const [gameVersion, setGameVersion] = useState<string | null>(null)
+  const filtersRestoredRef = useRef(false)
   const [sort, setSort] = useState<ModrinthSortIndex>('downloads')
   const [results, setResults] = useState<ModrinthProject[]>([])
   const [cfResults, setCfResults] = useState<CFProject[]>([])
@@ -828,6 +829,27 @@ function Browse() {
     api.instance.list().then(setInstances).catch(() => setInstances([]))
     api.config.get().then(cfg => setCfApiKey((cfg as { curseforgeApiKey?: string }).curseforgeApiKey ?? null)).catch(() => {})
   }, [])
+
+  // Restore filters from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('refract.browse.filters')
+      if (saved) {
+        const { gameVersion: gv, loader: ld } = JSON.parse(saved) as { gameVersion: string | null; loader: string | null }
+        if (gv !== undefined) setGameVersion(gv)
+        if (ld !== undefined) setLoader(ld ?? 'All')
+      }
+    } catch { /* ignore */ }
+    filtersRestoredRef.current = true
+  }, [])
+
+  // Save filters to localStorage when they change (skip the very first render before restore)
+  useEffect(() => {
+    if (!filtersRestoredRef.current) return
+    try {
+      localStorage.setItem('refract.browse.filters', JSON.stringify({ gameVersion, loader: loader === 'All' ? null : loader }))
+    } catch { /* ignore */ }
+  }, [gameVersion, loader])
 
   // When instance changes: apply filters, scan actual mod files via checkModUpdates
   useEffect(() => {

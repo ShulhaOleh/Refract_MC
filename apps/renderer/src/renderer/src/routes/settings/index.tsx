@@ -279,14 +279,13 @@ function Settings() {
                     title="Custom colour"
                     style={{ width:30, height:22, padding:0, border:'1px solid var(--border-r)', borderRadius:3, cursor:'pointer', background:'none' }}
                   />
-                  {accentColor && (
-                    <button
-                      onClick={() => { setAccentColor(null); showToast('Accent colour reset.') }}
-                      style={{ fontSize:11, color:'var(--ink-4)', background:'none', border:'1px solid var(--border-r)', borderRadius:3, padding:'2px 8px', cursor:'pointer' }}
-                    >
-                      Reset
-                    </button>
-                  )}
+                  <button
+                    onClick={() => { if (accentColor) { setAccentColor(null); showToast('Accent colour reset.') } }}
+                    disabled={!accentColor}
+                    style={{ fontSize:11, color:'var(--ink-4)', background:'none', border:'1px solid var(--border-r)', borderRadius:3, padding:'2px 8px', cursor: accentColor ? 'pointer' : 'not-allowed', opacity: accentColor ? 1 : 0.4 }}
+                  >
+                    Reset
+                  </button>
                 </div>
               </Field>
 

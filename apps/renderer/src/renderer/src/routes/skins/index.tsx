@@ -289,6 +289,11 @@ function SkinListItem({ skin, selected, onSelect, onDelete, renaming, renameVal,
 }) {
   const t = useT()
   const [hover, setHover] = useState(false)
+  const [faceUrl, setFaceUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.skins.getDataUrl(skin.filename).then(url => setFaceUrl(url)).catch(() => {})
+  }, [skin.filename])
 
   return (
     <div
@@ -303,20 +308,31 @@ function SkinListItem({ skin, selected, onSelect, onDelete, renaming, renameVal,
         cursor: 'pointer', transition: 'background 100ms',
       }}
     >
-      {/* Small face icon */}
-      <div style={{
-        width: 32, height: 32, flexShrink: 0, borderRadius: 4, overflow: 'hidden',
-        background: 'var(--surface-3)', border: '1px solid var(--border-r)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: selected ? 'var(--accent)' : 'var(--ink-4)', fontSize: 16,
-      }}>
-        {/* shirt/skin icon */}
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="8" y="2" width="8" height="6" rx="1"/>
-          <path d="M4 8h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"/>
-          <path d="M4 8L2 5l4-1M20 8l2-3-4-1"/>
-        </svg>
-      </div>
+      {/* Small face thumbnail */}
+      {faceUrl ? (
+        <div style={{
+          width: 32, height: 32, flexShrink: 0,
+          backgroundImage: `url(${faceUrl})`,
+          backgroundSize: '256px 256px',
+          backgroundPosition: '-32px -32px',
+          imageRendering: 'pixelated',
+          borderRadius: 3,
+        }} />
+      ) : (
+        <div style={{
+          width: 32, height: 32, flexShrink: 0, borderRadius: 4, overflow: 'hidden',
+          background: 'var(--surface-3)', border: '1px solid var(--border-r)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: selected ? 'var(--accent)' : 'var(--ink-4)', fontSize: 16,
+        }}>
+          {/* shirt/skin icon placeholder */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="8" y="2" width="8" height="6" rx="1"/>
+            <path d="M4 8h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"/>
+            <path d="M4 8L2 5l4-1M20 8l2-3-4-1"/>
+          </svg>
+        </div>
+      )}
 
       {/* Name */}
       <div style={{ flex: 1, minWidth: 0 }}>

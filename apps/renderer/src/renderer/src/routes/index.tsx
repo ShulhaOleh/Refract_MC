@@ -132,7 +132,7 @@ function requiredJava(mcVersion: string): number {
   return 8
 }
 
-function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFolder, onServers, onDropJar, blockReason, isRunning, hasLogs, updateCount, javaOk }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; onOpenFolder: () => void; onServers: () => void; onDropJar: (path: string) => void; blockReason: 'no-profile' | 'no-license' | null; isRunning: boolean; hasLogs: boolean; updateCount: number; javaOk: boolean }) {
+function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFolder, onServers, onDropJar, blockReason, isRunning, hasLogs, updateCount, javaOk, selectionMode, selected, onSelect }: { instance: Instance; onLaunch: () => void; onEdit: () => void; onConsole: () => void; onMods: () => void; onOpenFolder: () => void; onServers: () => void; onDropJar: (path: string) => void; blockReason: 'no-profile' | 'no-license' | null; isRunning: boolean; hasLogs: boolean; updateCount: number; javaOk: boolean; selectionMode?: boolean; selected?: boolean; onSelect?: () => void }) {
   const t = useT()
   const [dragOver, setDragOver] = useState(false)
   const [bannerHover, setBannerHover] = useState(false)
@@ -152,7 +152,7 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
       style={{
         width: 300,
         flexShrink: 0,
-        outline: dragOver ? '2px solid var(--accent)' : 'none',
+        outline: dragOver ? '2px solid var(--accent)' : selected ? '2px solid var(--accent)' : 'none',
         background: 'var(--surface)',
         border: '1px solid var(--border-r)',
         borderRadius: 'var(--radius)',
@@ -161,7 +161,7 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
         flexDirection: 'column',
       }}>
       <div
-        onClick={onMods}
+        onClick={selectionMode ? onSelect : onMods}
         onMouseEnter={() => setBannerHover(true)}
         onMouseLeave={() => setBannerHover(false)}
         style={{ height: 160, position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
@@ -170,7 +170,23 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
           ? <img src={instance.iconPath} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
           : <PixelScene name={loaderToScene(instance.modLoader)} style={{ width: '100%', height: '100%' }} />
         }
-        {bannerHover && !dragOver && (
+        {selectionMode && (
+          <div
+            onClick={e => { e.stopPropagation(); onSelect?.() }}
+            style={{
+              position: 'absolute', top: 8, left: 8, zIndex: 5,
+              width: 18, height: 18,
+              background: selected ? 'var(--accent)' : 'rgba(0,0,0,.55)',
+              border: `2px solid ${selected ? 'var(--accent)' : 'rgba(255,255,255,.5)'}`,
+              borderRadius: 3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            {selected && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </div>
+        )}
+        {!selectionMode && bannerHover && !dragOver && (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: 15, color: '#fff', letterSpacing: '.12em', background: 'rgba(0,0,0,.5)', padding: '5px 14px', borderRadius: 3 }}>VIEW DETAILS</div>
           </div>
@@ -187,7 +203,7 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
         }} />
         {!javaOk && instance.isInstalled && (
           <div style={{
-            position: 'absolute', top: 8, left: 8,
+            position: 'absolute', top: 8, left: selectionMode ? 34 : 8,
             background: 'rgba(196,148,50,.9)',
             borderRadius: 3, padding: '2px 7px',
             fontFamily: "'VT323',monospace", fontSize: 12,
@@ -369,7 +385,7 @@ function EmptyState({ onOpen }: { onOpen: () => void }) {
   )
 }
 
-function CrashReportModal({ instanceName, text, onClose, onOpenConsole }: { instanceName: string; text: string; onClose: () => void; onOpenConsole: () => void }) {
+function CrashReportModal({ instanceName, text, lastLines, onClose, onOpenConsole }: { instanceName: string; text: string; lastLines: string[]; onClose: () => void; onOpenConsole: () => void }) {
   const t = useT()
   const [copied, setCopied] = useState(false)
 
@@ -410,6 +426,14 @@ function CrashReportModal({ instanceName, text, onClose, onOpenConsole }: { inst
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px' }}>
+          {lastLines.length > 0 && (
+            <>
+              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--ink-4)', letterSpacing: '.08em', marginBottom: 4 }}>LAST GAME OUTPUT</div>
+              <pre style={{ fontFamily: 'monospace', fontSize: 10, color: '#a0a0a0', margin: '0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.4, background: '#111', padding: '8px 10px', borderRadius: 3, maxHeight: 120, overflowY: 'auto' }}>{lastLines.join('\n')}</pre>
+              <div style={{ margin: '10px 0', borderTop: '1px solid rgba(255,255,255,.08)' }} />
+              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--ink-4)', letterSpacing: '.08em', marginBottom: 4 }}>CRASH REPORT</div>
+            </>
+          )}
           <pre style={{ fontFamily: 'monospace', fontSize: 11, color: '#e8e8e8', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.5 }}>{text}</pre>
         </div>
       </div>
@@ -613,7 +637,9 @@ function Library() {
   const [whatsNew, setWhatsNew] = useState<ChangelogEntry[]>(FALLBACK_WHATS_NEW)
   const [fileImport, setFileImport] = useState<{ importId: string; step: string; percent: number; name: string } | null>(null)
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null)
-  const [crashReport, setCrashReport] = useState<{ instanceId: string; text: string } | null>(null)
+  const [crashReport, setCrashReport] = useState<{ instanceId: string; text: string; lastLines: string[] } | null>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [noLicenseTarget, setNoLicenseTarget] = useState<Instance | null>(null)
 
@@ -797,7 +823,7 @@ function Library() {
         api.mc.crashReport(instanceId)
           .then(text => {
             if (text) {
-              setCrashReport({ instanceId, text })
+              setCrashReport({ instanceId, text, lastLines: consoleLogs.get(instanceId)?.slice(-20) ?? [] })
             } else {
               setLaunchToast(`Minecraft exited with code ${code}. Check the Console for details.`)
               setTimeout(() => setLaunchToast(null), 6000)
@@ -942,6 +968,34 @@ function Library() {
                 {tab === 'recent' ? t.home.recent : tab === 'pinned' ? t.home.pinned : t.home.all}
               </button>
             ))}
+            {instances.length > 0 && (
+              <button
+                onClick={() => {
+                  if (selectionMode) { setSelectedIds(new Set()); setSelectionMode(false) }
+                  else setSelectionMode(true)
+                }}
+                style={{
+                  marginLeft: 8,
+                  fontSize: 11, fontWeight: 500,
+                  color: selectionMode ? 'var(--accent)' : 'var(--ink-4)',
+                  background: selectionMode ? 'var(--accent-tint)' : 'transparent',
+                  border: `1px solid ${selectionMode ? 'var(--accent)' : 'var(--border-r)'}`,
+                  borderRadius: 3,
+                  padding: '2px 8px',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                {selectionMode ? (
+                  'Cancel'
+                ) : (
+                  <>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/></svg>
+                    Select
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {instances.length > 0 && (
@@ -980,6 +1034,59 @@ function Library() {
             </div>
           )}
         </div>
+
+        {/* Bulk action bar */}
+        {selectionMode && selectedIds.size > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+            padding: '8px 12px',
+            background: 'var(--surface)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius)',
+            fontSize: 12,
+          }}>
+            <span style={{ color: 'var(--ink)', fontWeight: 600, marginRight: 4 }}>{selectedIds.size} selected</span>
+            <button
+              onClick={() => {
+                const visible = isGroupedView ? applyFilters(instances) : tabInstances
+                setSelectedIds(new Set(visible.map(i => i.id)))
+              }}
+              style={{ fontSize: 11, padding: '3px 10px', background: 'var(--surface-2)', color: 'var(--ink-3)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer' }}
+            >
+              Select all
+            </button>
+            <button
+              onClick={async () => {
+                const groupName = window.prompt('Enter group name (leave blank to ungroup):')
+                if (groupName === null) return
+                for (const id of selectedIds) {
+                  await updateInstance.mutateAsync({ id, patch: { groupId: groupName.trim() || undefined } })
+                }
+                setSelectedIds(new Set())
+              }}
+              style={{ fontSize: 11, padding: '3px 10px', background: 'var(--surface-2)', color: 'var(--ink-3)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer' }}
+            >
+              Move to group ▾
+            </button>
+            <button
+              onClick={async () => {
+                if (!window.confirm(`Delete ${selectedIds.size} instance(s)? This cannot be undone.`)) return
+                for (const id of [...selectedIds]) {
+                  await deleteInstance.mutateAsync(id)
+                }
+                setSelectedIds(new Set())
+                setSelectionMode(false)
+              }}
+              style={{ fontSize: 11, padding: '3px 10px', background: 'transparent', color: 'var(--lava)', border: '1px solid rgba(217,59,59,.4)', borderRadius: 3, cursor: 'pointer' }}
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 8px', background: 'transparent', color: 'var(--ink-4)', border: 'none', cursor: 'pointer' }}
+            >
+              ✕ Clear
+            </button>
+          </div>
+        )}
 
         {/* Cards */}
         {isLoading ? (
@@ -1080,6 +1187,14 @@ function Library() {
                                   hasLogs={(consoleLogs.get(inst.id)?.length ?? 0) > 0}
                                   updateCount={updateCounts.get(inst.id) ?? 0}
                                   javaOk={javaOk}
+                                  selectionMode={selectionMode}
+                                  selected={selectedIds.has(inst.id)}
+                                  onSelect={() => setSelectedIds(prev => {
+                                    const next = new Set(prev)
+                                    if (next.has(inst.id)) next.delete(inst.id)
+                                    else next.add(inst.id)
+                                    return next
+                                  })}
                                 />
                               </div>
                             )
@@ -1133,6 +1248,14 @@ function Library() {
                   hasLogs={(consoleLogs.get(inst.id)?.length ?? 0) > 0}
                   updateCount={updateCounts.get(inst.id) ?? 0}
                   javaOk={javaOk}
+                  selectionMode={selectionMode}
+                  selected={selectedIds.has(inst.id)}
+                  onSelect={() => setSelectedIds(prev => {
+                    const next = new Set(prev)
+                    if (next.has(inst.id)) next.delete(inst.id)
+                    else next.add(inst.id)
+                    return next
+                  })}
                 />
               )
             })}
@@ -1341,6 +1464,7 @@ function Library() {
           <CrashReportModal
             instanceName={inst?.name ?? crashReport.instanceId}
             text={crashReport.text}
+            lastLines={crashReport.lastLines}
             onClose={() => setCrashReport(null)}
             onOpenConsole={() => { setCrashReport(null); setConsoleOpen(crashReport.instanceId) }}
           />
