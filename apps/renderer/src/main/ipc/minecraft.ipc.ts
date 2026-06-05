@@ -6,7 +6,7 @@ import { spawn } from 'child_process'
 import { handleIpc } from './handle'
 import { fetchVersionList } from '@refract/core'
 import { detectJavaInstallations } from '@refract/core/java-manager'
-import { installMinecraft } from '../services/minecraft/downloader'
+import { installMinecraft, fetchForgeVersionList, fetchNeoForgeVersionList } from '../services/minecraft/downloader'
 import { launchInstance, stopInstance, isInstanceRunning } from '../services/minecraft/launcher'
 import { resolveInstanceDir } from '../services/instance-store'
 import { loadManagedJavas } from '../services/java-manager'
@@ -100,11 +100,34 @@ type JavaList = Awaited<ReturnType<typeof detectJavaInstallations>>
 let javaCache: { data: JavaList; at: number } | null = null
 const JAVA_TTL = 5 * 60 * 1000  // 5 min — invalidated automatically on download/delete
 
+type ForgeVersions = Awaited<ReturnType<typeof fetchForgeVersionList>>
+const forgeVersionCache = new Map<string, { data: ForgeVersions; at: number }>()
+const neoforgeVersionCache = new Map<string, { data: string[]; at: number }>()
+const LOADER_VERSION_TTL = 10 * 60 * 1000  // 10 min
+
 export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   handleIpc('mc.versions', async () => {
     if (versionListCache && Date.now() - versionListCache.at < VERSION_TTL) return versionListCache.data
     const data = await fetchVersionList()
     versionListCache = { data, at: Date.now() }
+    return data
+  })
+
+  handleIpc('mc.forgeVersions', async (_event, mcVersion) => {
+    const key = String(mcVersion)
+    const cached = forgeVersionCache.get(key)
+    if (cached && Date.now() - cached.at < LOADER_VERSION_TTL) return cached.data
+    const data = await fetchForgeVersionList(key)
+    forgeVersionCache.set(key, { data, at: Date.now() })
+    return data
+  })
+
+  handleIpc('mc.neoforgeVersions', async (_event, mcVersion) => {
+    const key = String(mcVersion)
+    const cached = neoforgeVersionCache.get(key)
+    if (cached && Date.now() - cached.at < LOADER_VERSION_TTL) return cached.data
+    const data = await fetchNeoForgeVersionList(key)
+    neoforgeVersionCache.set(key, { data, at: Date.now() })
     return data
   })
 

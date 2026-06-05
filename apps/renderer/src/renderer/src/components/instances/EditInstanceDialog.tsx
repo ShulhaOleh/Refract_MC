@@ -53,6 +53,10 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
   const [mcVersion, setMcVersion]     = useState('1.21.1')
   const [showSnapshots, setSnap]      = useState(false)
   const [modLoader, setModLoader]     = useState<ModLoader | ''>('')
+  const [loaderVersion, setLoaderVersion]     = useState('')
+  const [loaderVersions, setLoaderVersions]   = useState<string[]>([])
+  const [loaderVersionRecommended, setLoaderVersionRecommended] = useState<string | undefined>()
+  const [loaderVersionsLoading, setLoaderVersionsLoading] = useState(false)
   const [memGB, setMemGB]             = useState(2)
   const [coverImage, setCoverImage]   = useState('')
   const [pinned, setPinned]           = useState(false)
@@ -81,6 +85,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
       setMcVersion(instance.minecraftVersion)
       setSnap(false)
       setModLoader(instance.modLoader ?? '')
+      setLoaderVersion(instance.modLoaderVersion ?? '')
       setMemGB(Math.max(1, Math.round(instance.memoryMb / 1024)))
       setCoverImage(instance.iconPath ?? '')
       setPinned(instance.pinned ?? false)
@@ -91,6 +96,21 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
       api.mc.java().then(setJavas).catch(() => setJavas([]))
     }
   }, [instance, open])
+
+  useEffect(() => {
+    setLoaderVersions([])
+    setLoaderVersionRecommended(undefined)
+    if (modLoader !== 'forge' && modLoader !== 'neoforge') return
+    setLoaderVersionsLoading(true)
+    const p = modLoader === 'neoforge'
+      ? api.mc.neoforgeVersions(mcVersion).then(v => { setLoaderVersions(v); setLoaderVersionsLoading(false) })
+      : api.mc.forgeVersions(mcVersion).then(({ versions, recommended }) => {
+          setLoaderVersions(versions)
+          setLoaderVersionRecommended(recommended)
+          setLoaderVersionsLoading(false)
+        })
+    p.catch(() => setLoaderVersionsLoading(false))
+  }, [modLoader, mcVersion])
 
   async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -108,6 +128,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
         name: name.trim(),
         minecraftVersion: mcVersion,
         modLoader: modLoader || undefined,
+        modLoaderVersion: loaderVersion || undefined,
         memoryMb: memGB * 1024,
         iconPath: coverImage || undefined,
         pinned,
@@ -296,6 +317,33 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                   ))}
                 </div>
               </div>
+
+              {/* Loader version picker — only for Forge / NeoForge */}
+              {(modLoader === 'forge' || modLoader === 'neoforge') && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 500, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+                    {modLoader === 'neoforge' ? 'NeoForge' : 'Forge'} version
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      className="ni-input"
+                      value={loaderVersion}
+                      onChange={e => setLoaderVersion(e.target.value)}
+                      disabled={loaderVersionsLoading}
+                    >
+                      <option value="">{loaderVersionsLoading ? 'Loading…' : 'Latest (auto)'}</option>
+                      {loaderVersions.map(v => (
+                        <option key={v} value={v}>
+                          {v}{v === loaderVersionRecommended ? ' ★ recommended' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <span style={{ position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ink-3)' }}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Memory */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

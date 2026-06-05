@@ -246,28 +246,47 @@ function resolveForgeData(
   return value
 }
 
-async function fetchForgeLatestVersion(mcVersion: string): Promise<string> {
-  const promos = await fetchJson<{ promos: Record<string, string> }>(
-    'https://files.minecraftforge.net/maven/net/minecraftforge/forge/promotions_slim.json'
-  )
-  const ver = promos.promos[`${mcVersion}-recommended`] ?? promos.promos[`${mcVersion}-latest`]
-  if (!ver) throw new Error(`No Forge version found for Minecraft ${mcVersion}. It may not be supported yet.`)
-  return ver
+export async function fetchForgeVersionList(mcVersion: string): Promise<{ versions: string[]; recommended?: string }> {
+  const [promoData, xml] = await Promise.all([
+    fetchJson<{ promos: Record<string, string> }>(
+      'https://files.minecraftforge.net/maven/net/minecraftforge/forge/promotions_slim.json'
+    ),
+    fetchText('https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml'),
+  ])
+  const recommended = promoData.promos[`${mcVersion}-recommended`]
+  const prefix = `${mcVersion}-`
+  const versions = [...xml.matchAll(/<version>([^<]*)<\/version>/g)]
+    .map(m => m[1])
+    .filter(v => v.startsWith(prefix))
+    .map(v => v.slice(prefix.length))
+    .reverse()
+  return { versions, recommended }
 }
 
-async function fetchNeoForgeLatestVersion(mcVersion: string): Promise<string> {
+export async function fetchNeoForgeVersionList(mcVersion: string): Promise<string[]> {
   const parts = mcVersion.split('.')
   const prefix = parts.length >= 3
     ? `${parseInt(parts[1])}.${parseInt(parts[2])}.`
     : `${parseInt(parts[1])}.`
 
   const xml = await fetchText('https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml')
-  const matches = [...xml.matchAll(/<version>(\d[^<]*)<\/version>/g)]
-  const versions = matches.map(m => m[1]).filter(v => v.startsWith(prefix))
+  return [...xml.matchAll(/<version>(\d[^<]*)<\/version>/g)]
+    .map(m => m[1])
+    .filter(v => v.startsWith(prefix))
+    .reverse()
+}
 
-  const latest = versions[versions.length - 1]
-  if (!latest) throw new Error(`No NeoForge version found for Minecraft ${mcVersion}. It may not be supported yet.`)
-  return latest
+async function fetchForgeLatestVersion(mcVersion: string): Promise<string> {
+  const { versions, recommended } = await fetchForgeVersionList(mcVersion)
+  const ver = recommended ?? versions[0]
+  if (!ver) throw new Error(`No Forge version found for Minecraft ${mcVersion}. It may not be supported yet.`)
+  return ver
+}
+
+async function fetchNeoForgeLatestVersion(mcVersion: string): Promise<string> {
+  const versions = await fetchNeoForgeVersionList(mcVersion)
+  if (!versions[0]) throw new Error(`No NeoForge version found for Minecraft ${mcVersion}. It may not be supported yet.`)
+  return versions[0]
 }
 
 async function installForge(

@@ -40,6 +40,7 @@ interface CreateInput {
   name: string
   minecraftVersion: string
   modLoader?: ModLoader
+  modLoaderVersion?: string
   memoryMb: number
   iconPath?: string
   groupId?: string
@@ -64,6 +65,10 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
   const [mcVersion, setMcVersion]     = useState('1.21.1')
   const [showSnapshots, setSnap]      = useState(false)
   const [modLoader, setModLoader]     = useState<ModLoader | ''>('')
+  const [loaderVersion, setLoaderVersion]     = useState('')
+  const [loaderVersions, setLoaderVersions]   = useState<string[]>([])
+  const [loaderVersionRecommended, setLoaderVersionRecommended] = useState<string | undefined>()
+  const [loaderVersionsLoading, setLoaderVersionsLoading] = useState(false)
   const [memGB, setMemGB]             = useState(2)
   const [groupId, setGroupId]         = useState('')
   const [loading, setLoading]         = useState(false)
@@ -74,6 +79,22 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
       .then(cfg => { if (cfg.systemRamGb && cfg.systemRamGb > 4) setMaxRamGb(cfg.systemRamGb) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    setLoaderVersion('')
+    setLoaderVersions([])
+    setLoaderVersionRecommended(undefined)
+    if (modLoader !== 'forge' && modLoader !== 'neoforge') return
+    setLoaderVersionsLoading(true)
+    const p = modLoader === 'neoforge'
+      ? api.mc.neoforgeVersions(mcVersion).then(v => { setLoaderVersions(v); setLoaderVersionsLoading(false) })
+      : api.mc.forgeVersions(mcVersion).then(({ versions, recommended }) => {
+          setLoaderVersions(versions)
+          setLoaderVersionRecommended(recommended)
+          setLoaderVersionsLoading(false)
+        })
+    p.catch(() => setLoaderVersionsLoading(false))
+  }, [modLoader, mcVersion])
 
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
 
@@ -88,7 +109,8 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
 
   function reset() {
     setName('My Instance'); setMcVersion('1.21.1'); setSnap(false)
-    setModLoader(''); setMemGB(2); setGroupId(''); setActiveTemplate(null)
+    setModLoader(''); setLoaderVersion(''); setLoaderVersions([]); setLoaderVersionRecommended(undefined)
+    setMemGB(2); setGroupId(''); setActiveTemplate(null)
   }
 
   function close() { if (!loading) { reset(); onOpenChange(false) } }
@@ -98,7 +120,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
     if (!name.trim() || loading) return
     setLoading(true)
     try {
-      await onCreate({ name: name.trim(), minecraftVersion: mcVersion, modLoader: modLoader || undefined, memoryMb: memGB * 1024, groupId: groupId.trim() || undefined })
+      await onCreate({ name: name.trim(), minecraftVersion: mcVersion, modLoader: modLoader || undefined, modLoaderVersion: loaderVersion || undefined, memoryMb: memGB * 1024, groupId: groupId.trim() || undefined })
       onOpenChange(false); reset()
     } finally { setLoading(false) }
   }
@@ -274,6 +296,33 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
                   ))}
                 </div>
               </div>
+
+              {/* Loader version picker — only for Forge / NeoForge */}
+              {(modLoader === 'forge' || modLoader === 'neoforge') && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 500, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+                    {modLoader === 'neoforge' ? 'NeoForge' : 'Forge'} version
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      className="ni-input"
+                      value={loaderVersion}
+                      onChange={e => setLoaderVersion(e.target.value)}
+                      disabled={loaderVersionsLoading}
+                    >
+                      <option value="">{loaderVersionsLoading ? 'Loading…' : 'Latest (auto)'}</option>
+                      {loaderVersions.map(v => (
+                        <option key={v} value={v}>
+                          {v}{v === loaderVersionRecommended ? ' ★ recommended' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <span style={{ position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ink-3)' }}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Memory */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
