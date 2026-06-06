@@ -176,6 +176,8 @@ export async function launchInstance(
 
   runningProcesses.set(instanceId, proc)
 
+  if (getConfig().launchMinimizesToTray && !mainWindow.isDestroyed()) mainWindow.hide()
+
   // Record last played + Discord presence
   const launchTime = Date.now()
   instanceStore.updateInstance(instanceId, { lastPlayed: new Date().toISOString() })
@@ -210,6 +212,10 @@ export async function launchInstance(
     recordPlaytime()
     void clearGameActivity(instanceId)
     send('mc:exit', { instanceId, code })
+    if (getConfig().reopenOnGameExit && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show()
+      mainWindow.focus()
+    }
     if (code !== 0 && code !== null) {
       notify('Minecraft crashed', `${instance.name} exited with code ${code}. Check the crash report.`)
     }

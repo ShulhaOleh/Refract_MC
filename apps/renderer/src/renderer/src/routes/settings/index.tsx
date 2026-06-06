@@ -330,17 +330,6 @@ function Settings() {
                 </Segmented>
               </Field>
 
-              <Field label="Minimize to tray" note="When you close the window, keep the launcher running in the system tray instead of quitting.">
-                <Segmented>
-                  <SegmentButton active={!!(config?.minimizeToTray)} disabled={false} onClick={() => { api.config.set('minimizeToTray', true).catch(() => {}); setConfig(c => c ? { ...c, minimizeToTray: true } : c); showToast('Minimize to tray enabled.') }}>
-                    On
-                  </SegmentButton>
-                  <SegmentButton active={!(config?.minimizeToTray)} disabled={false} onClick={() => { api.config.set('minimizeToTray', false).catch(() => {}); setConfig(c => c ? { ...c, minimizeToTray: false } : c); showToast('Minimize to tray disabled.') }}>
-                    Off
-                  </SegmentButton>
-                </Segmented>
-              </Field>
-
               <Field label={t.settings.language} note={t.settings.languageNote}>
                 <Segmented>
                   <SegmentButton active={lang === 'en'} disabled={false} onClick={() => setLang('en')}>
@@ -379,6 +368,35 @@ function Settings() {
                     {t.account.save}
                   </button>
                 </div>
+              </Field>
+            </div>
+          </Panel>
+
+          <Panel title="Launch behavior">
+            <div style={{ display:'grid', gap:12 }}>
+              <Field label="Close to tray" note="When you close the window, keep the launcher running in the system tray instead of quitting.">
+                <Segmented>
+                  <SegmentButton active={!!(config?.minimizeToTray)} disabled={false} onClick={() => { api.config.set('minimizeToTray', true).catch(() => {}); setConfig(c => c ? { ...c, minimizeToTray: true } : c); showToast('Close to tray on.') }}>On</SegmentButton>
+                  <SegmentButton active={!(config?.minimizeToTray)} disabled={false} onClick={() => { api.config.set('minimizeToTray', false).catch(() => {}); setConfig(c => c ? { ...c, minimizeToTray: false } : c); showToast('Close to tray off.') }}>Off</SegmentButton>
+                </Segmented>
+              </Field>
+              <Field label="Start minimized" note="Launch the app hidden — only the tray icon appears until you open it. Requires 'Close to tray' to be on.">
+                <Segmented>
+                  <SegmentButton active={!!(config?.startMinimized)} disabled={false} onClick={() => { api.config.set('startMinimized', true).catch(() => {}); setConfig(c => c ? { ...c, startMinimized: true } : c); showToast('Start minimized on.') }}>On</SegmentButton>
+                  <SegmentButton active={!(config?.startMinimized)} disabled={false} onClick={() => { api.config.set('startMinimized', false).catch(() => {}); setConfig(c => c ? { ...c, startMinimized: false } : c); showToast('Start minimized off.') }}>Off</SegmentButton>
+                </Segmented>
+              </Field>
+              <Field label="Hide on game launch" note="Automatically hide the launcher window to the tray when a game starts.">
+                <Segmented>
+                  <SegmentButton active={!!(config?.launchMinimizesToTray)} disabled={false} onClick={() => { api.config.set('launchMinimizesToTray', true).catch(() => {}); setConfig(c => c ? { ...c, launchMinimizesToTray: true } : c); showToast('Hide on launch on.') }}>On</SegmentButton>
+                  <SegmentButton active={!(config?.launchMinimizesToTray)} disabled={false} onClick={() => { api.config.set('launchMinimizesToTray', false).catch(() => {}); setConfig(c => c ? { ...c, launchMinimizesToTray: false } : c); showToast('Hide on launch off.') }}>Off</SegmentButton>
+                </Segmented>
+              </Field>
+              <Field label="Reopen on game exit" note="Automatically bring the launcher back when Minecraft closes.">
+                <Segmented>
+                  <SegmentButton active={!!(config?.reopenOnGameExit)} disabled={false} onClick={() => { api.config.set('reopenOnGameExit', true).catch(() => {}); setConfig(c => c ? { ...c, reopenOnGameExit: true } : c); showToast('Reopen on exit on.') }}>On</SegmentButton>
+                  <SegmentButton active={!(config?.reopenOnGameExit)} disabled={false} onClick={() => { api.config.set('reopenOnGameExit', false).catch(() => {}); setConfig(c => c ? { ...c, reopenOnGameExit: false } : c); showToast('Reopen on exit off.') }}>Off</SegmentButton>
+                </Segmented>
               </Field>
             </div>
           </Panel>

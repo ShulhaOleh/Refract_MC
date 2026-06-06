@@ -157,6 +157,8 @@ function createBrowserApi(): RefractAPI {
       fetchSkinTextureUrl: async () => null,
       browseSkin: async () => null,
       uploadSkin: async () => { throw new Error('Skin upload requires the Electron app.') },
+      fetchCapes: async () => [],
+      setCape: async () => { throw new Error('Cape management requires the Electron app.') },
     },
     theme: {
       list: async () => [],
@@ -286,6 +288,11 @@ function createBrowserApi(): RefractAPI {
         const { fetchVersionList } = await import('@refract/core')
         return fetchVersionList()
       },
+      forgeVersions: async () => ({ versions: [] }),
+      neoforgeVersions: async () => [],
+      fabricVersions: async () => [],
+      quiltVersions: async () => [],
+      cancelInstall: async () => undefined,
       java: async () => [],
       isRunning: async () => false,
       install: async () => { throw new Error('MC install requires the Electron app.') },

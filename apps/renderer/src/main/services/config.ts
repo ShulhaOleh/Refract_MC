@@ -10,6 +10,9 @@ export interface AppConfig {
   onboardingDone: boolean
   curseforgeApiKey?: string
   minimizeToTray?: boolean
+  startMinimized?: boolean
+  launchMinimizesToTray?: boolean
+  reopenOnGameExit?: boolean
   accounts: Array<{
     uuid: string
     username: string

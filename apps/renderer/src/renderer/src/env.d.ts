@@ -29,6 +29,9 @@ declare global {
           defaultMemoryMb: number
           onboardingDone: boolean
           minimizeToTray?: boolean
+          startMinimized?: boolean
+          launchMinimizesToTray?: boolean
+          reopenOnGameExit?: boolean
           systemRamGb?: number
           curseforgeApiKey?: string
           accounts: Array<{
@@ -127,6 +130,8 @@ declare global {
         fetchSkinTextureUrl: (uuid: string) => Promise<string | null>
         browseSkin: () => Promise<string | null>
         uploadSkin: (uuid: string, imagePath: string, variant: 'classic' | 'slim') => Promise<void>
+        fetchCapes: (uuid: string) => Promise<Array<{ id: string; state: string; url: string; alias: string; dataUrl?: string; isRender?: boolean }>>
+        setCape: (uuid: string, capeId: string | null) => Promise<void>
         yggdrasilLogin: (serverUrl: string, username: string, password: string) => Promise<{
           uuid: string
           username: string
@@ -226,6 +231,11 @@ declare global {
       }
       mc: {
         versions: () => Promise<import('@refract/core').MinecraftVersion[]>
+        forgeVersions: (mcVersion: string) => Promise<{ versions: string[]; recommended?: string }>
+        neoforgeVersions: (mcVersion: string) => Promise<string[]>
+        fabricVersions: (mcVersion: string) => Promise<string[]>
+        quiltVersions: (mcVersion: string) => Promise<string[]>
+        cancelInstall: () => Promise<void>
         java: () => Promise<import('@refract/core').JavaInstallation[]>
         isRunning: (instanceId: string) => Promise<boolean>
         install: (instanceId: string, versionId: string, versionUrl: string, modLoader?: string, modLoaderVersion?: string) => Promise<void>
