@@ -70,6 +70,7 @@ async function downloadLibraries(
     onProgress({ step, current, total, percent: (current / total) * 100 })
 
     if (lib.downloads?.artifact) {
+      if (!lib.downloads.artifact.url) continue // bundled in installer — extracted by copyMavenLibs
       const dest = resolve(paths.libraries, lib.downloads.artifact.path)
       if (relative(paths.libraries, dest).startsWith('..')) continue
       await downloadFile(lib.downloads.artifact.url, dest, undefined, signal)
