@@ -61,17 +61,18 @@ function createWindow(): BrowserWindow {
 
 function buildTrayMenu(mainWindow: BrowserWindow, tray: Tray): void {
   const instances = listInstances()
-  const last = instances[0] ?? null
+  const pinned = instances.filter(i => i.pinned).slice(0, 6)
+  const quickLaunch = pinned.length > 0 ? pinned : instances.slice(0, 1)
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Refract', click: () => { mainWindow.show(); mainWindow.focus() } },
     { type: 'separator' },
-    last
-      ? { label: `▶  ${last.name}`, click: () => {
-            mainWindow.show(); mainWindow.focus()
-            launchInstance(last.id, mainWindow).catch(() => {})
-          }}
-      : { label: 'No instances yet', enabled: false },
-    { type: 'separator' },
+    ...(quickLaunch.length > 0
+      ? quickLaunch.map(inst => ({
+          label: `▶  ${inst.name}`,
+          click: () => { mainWindow.show(); mainWindow.focus(); launchInstance(inst.id, mainWindow).catch(() => {}) },
+        }))
+      : [{ label: 'No instances yet', enabled: false } as Electron.MenuItemConstructorOptions]),
+    { type: 'separator' as const },
     { label: 'Quit', click: () => { isQuitting = true; app.quit() } },
   ]))
 }

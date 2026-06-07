@@ -127,6 +127,9 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
     e.preventDefault()
     if (!instance || !name.trim()) return
     setLoading(true)
+    const versionChanged = mcVersion !== instance.minecraftVersion
+      || (modLoader || undefined) !== instance.modLoader
+      || (loaderVersion || undefined) !== instance.modLoaderVersion
     try {
       await onSave(instance.id, {
         name: name.trim(),
@@ -139,6 +142,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
         groupId: groupId.trim() || undefined,
         javaPath: javaPath || undefined,
         javaArgs: javaArgs.trim() || undefined,
+        ...(versionChanged && instance.isInstalled ? { isInstalled: false } : {}),
       })
       onOpenChange(false)
     } finally {
