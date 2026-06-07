@@ -1650,7 +1650,7 @@ function PlaytimePanel({ instances }: { instances: Instance[] }) {
                   }} />
                 ))}
               </div>
-              <span style={{ fontSize: 9, color: 'var(--ink-4)' }}>{savesLeft}/2 saves left</span>
+              <span style={{ fontSize: 9, color: 'var(--ink-4)' }}>{savesLeft} save{savesLeft !== 1 ? 's' : ''} left</span>
             </div>
           </div>
         )
@@ -1658,7 +1658,7 @@ function PlaytimePanel({ instances }: { instances: Instance[] }) {
 
       {/* Total */}
       <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-4)', textAlign: 'right' }}>
-        {totalHours > 0 ? `${totalHours}h total` : fmtSeconds(grandTotal) + ' total'}
+        {fmtSeconds(grandTotal)} total
       </div>
     </Panel>
   )
