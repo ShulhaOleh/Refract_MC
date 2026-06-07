@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div
           key={pathname}
-          style={{ flex:1, minHeight:0, overflowY:'auto', overflowX:'hidden', padding:'24px 28px 28px', position:'relative', zIndex:1, animation:'page-enter 210ms cubic-bezier(.25,.46,.45,.94) both' }}
+          style={{ flex:1, minHeight:0, overflowY:'auto', overflowX:'hidden', padding:'24px 28px 28px', position:'relative', zIndex:1, animation:'page-enter 240ms cubic-bezier(.22,1,.36,1) both' }}
         >
           {children}
         </div>
