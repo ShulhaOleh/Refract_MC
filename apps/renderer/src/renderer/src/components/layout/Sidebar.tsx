@@ -4,6 +4,7 @@ import { SignOutIcon } from '../ui/BlockIcons'
 import { api, type SafeAccount } from '@/lib/api'
 import { useT } from '@/i18n'
 import { useThemeStore } from '@/stores/theme'
+import { SkinViewer3DLazy } from '../ui/SkinViewer3DLazy'
 import type { Instance } from '@refract/core'
 import discordIcon          from '@/assets/discord-icon.webp'
 import libraryIconRaw    from '@/assets/instance-library.svg?raw'
@@ -160,6 +161,47 @@ function AvatarBlock({ compact }: { compact: boolean }) {
   )
 }
 
+function SkinPopup({ friend, onClose }: { friend: Friend; onClose: () => void }) {
+  const [skinUrl, setSkinUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.auth.fetchSkinTextureUrl(friend.uuid).then(url => setSkinUrl(url ?? null)).catch(() => {})
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [friend.uuid, onClose])
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)', border: '1px solid var(--border-r)',
+          borderRadius: 8, padding: '16px 16px 12px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+          position: 'relative', boxShadow: '0 16px 48px rgba(0,0,0,.6)',
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-4)', fontSize: 16, lineHeight: 1, padding: 4 }}
+        >✕</button>
+        <SkinViewer3DLazy skinUrl={skinUrl} width={160} height={240} walk rotate />
+        <div style={{ fontFamily:"'VT323',monospace", fontSize: 18, letterSpacing: '.10em', color: 'var(--ink)' }}>
+          {friend.username.toUpperCase()}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function FriendsPanel() {
   const t = useT()
   const [friends, setFriends] = useState<Friend[]>([])
@@ -169,6 +211,7 @@ function FriendsPanel() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [myUsername, setMyUsername] = useState<string | null>(null)
+  const [skinTarget, setSkinTarget] = useState<Friend | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -322,18 +365,20 @@ function FriendsPanel() {
         </div>
       ) : (
         friends.map(friend => (
-          <FriendRow key={friend.uuid} friend={friend} instances={instances} onRemove={() => removeFriend(friend.uuid)} onNoteChange={(note) => handleNoteChange(friend.uuid, note)} />
+          <FriendRow key={friend.uuid} friend={friend} instances={instances} onRemove={() => removeFriend(friend.uuid)} onNoteChange={(note) => handleNoteChange(friend.uuid, note)} onSkinClick={() => setSkinTarget(friend)} />
         ))
       )}
+      {skinTarget && <SkinPopup friend={skinTarget} onClose={() => setSkinTarget(null)} />}
     </div>
   )
 }
 
-function FriendRow({ friend, instances, onRemove, onNoteChange }: {
+function FriendRow({ friend, instances, onRemove, onNoteChange, onSkinClick }: {
   friend: Friend
   instances: Instance[]
   onRemove: () => void
   onNoteChange: (note: string) => void
+  onSkinClick: () => void
 }) {
   const [hovered, setHovered]       = useState(false)
   const [imgSrc, setImgSrc] = useState(() => avatarUrl(friend.uuid))
@@ -381,10 +426,10 @@ function FriendRow({ friend, instances, onRemove, onNoteChange }: {
     >
       {/* Top row: avatar + name + actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {/* Avatar — click opens NameMC */}
+        {/* Avatar — click opens skin preview */}
         <div
-          onClick={openNameMC}
-          title="View on NameMC"
+          onClick={onSkinClick}
+          title="View skin"
           style={{ width: 24, height: 24, flexShrink: 0, position: 'relative', overflow: 'hidden', border: '1px solid var(--line)', background: 'var(--surface-3)', imageRendering: 'pixelated', cursor: 'pointer' }}
         >
           {!imgFailed ? (
