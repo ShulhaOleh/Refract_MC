@@ -11,3 +11,4 @@ out
 *.log
 .env
 .claude/*
+.tanstack
