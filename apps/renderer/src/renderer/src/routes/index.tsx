@@ -1525,19 +1525,19 @@ function Library() {
           onScan={async () => {
             setExternalScanning(true)
             try {
-              const found = await window.api.instance.scanExternal()
+              const found = await api.instance.scanExternal()
               setExternalInstances(found)
             } catch { setExternalInstances([]) }
             finally { setExternalScanning(false) }
           }}
           onLink={async (ext) => {
-            const inst = await window.api.instance.linkExternal(ext)
+            const inst = await api.instance.linkExternal(ext)
             await queryClient.invalidateQueries({ queryKey: ['instances'] })
             void recordActivity(`Linked "${inst.name}" from ${ext.sourceName}`)
             return inst
           }}
           onImport={async (ext) => {
-            const inst = await window.api.instance.importExternal(ext)
+            const inst = await api.instance.importExternal(ext)
             await queryClient.invalidateQueries({ queryKey: ['instances'] })
             void recordActivity(`Imported "${inst.name}" from ${ext.sourceName}`)
             return inst
@@ -1576,6 +1576,7 @@ interface SyncPanelProps {
 }
 
 function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: SyncPanelProps) {
+  const t = useT()
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<Set<string>>(new Set())
   const [err, setErr] = useState<string | null>(null)
@@ -1589,7 +1590,7 @@ function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: S
       else await onImport(ext)
       setDone(prev => { const n = new Set(prev); n.add(`${ext.source}:${ext.name}`); return n })
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed')
+      setErr(e instanceof Error ? e.message : t.sync.failed)
     } finally {
       setBusy(null)
     }
@@ -1610,8 +1611,8 @@ function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: S
         {/* header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--line)' }}>
           <div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: 22, letterSpacing: '.1em', color: 'var(--accent)' }}>SYNC INSTANCES</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>Detect instances from other launchers and launch or import them</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: 22, letterSpacing: '.1em', color: 'var(--accent)' }}>{t.sync.title}</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>{t.sync.subtitle}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-4)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 4 }}>✕</button>
         </div>
@@ -1623,7 +1624,7 @@ function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: S
             disabled={scanning}
             style={{ fontFamily: "'VT323',monospace", fontSize: 16, letterSpacing: '.08em', padding: '6px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: scanning ? 'default' : 'pointer', opacity: scanning ? .6 : 1 }}
           >
-            {scanning ? 'SCANNING…' : 'SCAN LAUNCHERS'}
+            {scanning ? t.sync.scanning : t.sync.scan}
           </button>
           <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>
             Prism · MultiMC · Modrinth · ATLauncher · CurseForge · GDLauncher
@@ -1636,13 +1637,13 @@ function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: S
 
           {instances === null && !scanning && (
             <div style={{ textAlign: 'center', color: 'var(--ink-4)', fontSize: 13, padding: '32px 0' }}>
-              Click <strong>SCAN LAUNCHERS</strong> to detect installed instances
+              {t.sync.scanHintPre} <strong>{t.sync.scan}</strong> {t.sync.scanHintPost}
             </div>
           )}
 
           {instances !== null && instances.length === 0 && (
             <div style={{ textAlign: 'center', color: 'var(--ink-4)', fontSize: 13, padding: '32px 0' }}>
-              No instances found. Make sure Prism Launcher, Modrinth App, or other supported launchers are installed.
+              {t.sync.noneFound}
             </div>
           )}
 
@@ -1653,7 +1654,7 @@ function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: S
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
                   <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: meta.color }}>{meta.label}</span>
-                  <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>— {list.length} instance{list.length !== 1 ? 's' : ''}</span>
+                  <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>{t.sync.instances(list.length)}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {list.map(ext => {
@@ -1662,7 +1663,7 @@ function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: S
                     const isLinkBusy = busy === `${key}:link`
                     const isImportBusy = busy === `${key}:import`
                     return (
-                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: isDone ? 'rgba(var(--accent-rgb),.06)' : 'var(--surface-2)', border: `1px solid ${isDone ? 'var(--accent)' : 'var(--border-r)'}`, borderRadius: 8 }}>
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: isDone ? 'color-mix(in srgb, var(--accent) 6%, transparent)' : 'var(--surface-2)', border: `1px solid ${isDone ? 'var(--accent)' : 'var(--border-r)'}`, borderRadius: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ext.name}</div>
                           <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>
@@ -1671,24 +1672,24 @@ function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: S
                           </div>
                         </div>
                         {isDone ? (
-                          <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>✓ Added</span>
+                          <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{t.sync.added}</span>
                         ) : (
                           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                             <button
                               disabled={!!busy}
                               onClick={() => { void handleAction(ext, 'link') }}
-                              title="Link — launch directly from this launcher's folder (no copying)"
+                              title={t.sync.linkTitle}
                               style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', background: 'var(--surface-3)', border: '1px solid var(--border-r)', borderRadius: 6, color: 'var(--ink)', cursor: busy ? 'default' : 'pointer', opacity: busy ? .6 : 1 }}
                             >
-                              {isLinkBusy ? '…' : '⇄ Link'}
+                              {isLinkBusy ? '…' : t.sync.link}
                             </button>
                             <button
                               disabled={!!busy}
                               onClick={() => { void handleAction(ext, 'import') }}
-                              title="Import — copy mods/saves into Refract (independent copy)"
+                              title={t.sync.importTitle}
                               style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', cursor: busy ? 'default' : 'pointer', opacity: busy ? .6 : 1 }}
                             >
-                              {isImportBusy ? '…' : '↓ Import'}
+                              {isImportBusy ? '…' : t.sync.import}
                             </button>
                           </div>
                         )}
@@ -1703,8 +1704,8 @@ function SyncPanel({ instances, scanning, onClose, onScan, onLink, onImport }: S
 
         {/* legend */}
         <div style={{ padding: '10px 20px', borderTop: '1px solid var(--line)', display: 'flex', gap: 16, fontSize: 10, color: 'var(--ink-4)' }}>
-          <span><strong style={{ color: 'var(--ink)' }}>⇄ Link</strong> — launches from the original folder, mods stay in sync automatically</span>
-          <span><strong style={{ color: 'var(--ink)' }}>↓ Import</strong> — copies mods/saves/configs into Refract (independent)</span>
+          <span><strong style={{ color: 'var(--ink)' }}>{t.sync.link}</strong> — {t.sync.legendLink}</span>
+          <span><strong style={{ color: 'var(--ink)' }}>{t.sync.import}</strong> — {t.sync.legendImport}</span>
         </div>
       </div>
     </div>

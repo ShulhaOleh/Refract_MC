@@ -452,5 +452,25 @@
     "saveAsAvatar":      "Save as avatar",
     "skinUpdated":       "Skin updated! Restart Minecraft to see it.",
     "savedAsAvatar":     "Saved as launcher avatar."
+  },
+
+  "sync": {
+    "title":             "SYNC INSTANCES",
+    "subtitle":          "Detect instances from other launchers and launch or import them",
+    "scan":              "SCAN LAUNCHERS",
+    "scanning":          "SCANNING…",
+    "scanHintPre":       "Click",
+    "scanHintPost":      "to detect installed instances",
+    "noneFound":         "No instances found. Make sure Prism Launcher, Modrinth App, or other supported launchers are installed.",
+    "instanceCount":     "— {{n}} instance",
+    "instanceCountPlural": "— {{n}} instances",
+    "added":             "✓ Added",
+    "link":              "⇄ Link",
+    "import":            "↓ Import",
+    "linkTitle":         "Link — launch directly from this launcher's folder (no copying)",
+    "importTitle":       "Import — copy mods/saves into Refract (independent copy)",
+    "failed":            "Failed",
+    "legendLink":        "launches from the original folder, mods stay in sync automatically",
+    "legendImport":      "copies mods/saves/configs into Refract (independent)"
   }
 }

@@ -92,6 +92,11 @@ function build(l: Locale) {
       useSkinAs:  (username: string) => i(l.skins.useSkinAs, { username }),
       skinApplied:(username: string) => i(l.skins.skinApplied, { username }),
     },
+
+    sync: {
+      ...l.sync,
+      instances: (n: number) => i(n !== 1 ? l.sync.instanceCountPlural : l.sync.instanceCount, { n }),
+    },
   }
 }
 
