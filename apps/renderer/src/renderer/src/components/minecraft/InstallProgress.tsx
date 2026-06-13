@@ -29,7 +29,7 @@ export function InstallProgress({ instanceId, instanceName, onDone, onError }: P
 
   function handleCancel() {
     setCancelling(true)
-    api.mc.cancelInstall().catch(() => {})
+    api.mc.cancelInstall(instanceId).catch(() => {})
   }
 
   return (

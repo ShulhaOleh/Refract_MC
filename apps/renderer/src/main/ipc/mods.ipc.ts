@@ -3,7 +3,7 @@ import { readdirSync, renameSync, rmSync, statSync, existsSync, readFileSync, wr
 import { inflateRawSync } from 'zlib'
 import { randomUUID } from 'crypto'
 import { handleIpc } from './handle'
-import { resolveInstanceDir } from '../services/instance-store'
+import { resolveInstanceDir, resolveGameDir } from '../services/instance-store'
 
 export type ContentType = 'mod' | 'resourcepack' | 'shader' | 'datapack'
 
@@ -37,7 +37,7 @@ export interface ContentEntry {
 export type ModEntry = ContentEntry
 
 function contentDir(instanceId: string, subdir: string): string {
-  return join(resolveInstanceDir(instanceId), 'minecraft', subdir)
+  return join(resolveGameDir(instanceId), subdir)
 }
 
 function extractPackPngFromZip(zipPath: string): string | null {

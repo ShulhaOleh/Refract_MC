@@ -246,7 +246,7 @@ declare global {
         neoforgeVersions: (mcVersion: string) => Promise<string[]>
         fabricVersions: (mcVersion: string) => Promise<string[]>
         quiltVersions: (mcVersion: string) => Promise<string[]>
-        cancelInstall: () => Promise<void>
+        cancelInstall: (instanceId?: string) => Promise<void>
         java: () => Promise<import('@refract/core').JavaInstallation[]>
         isRunning: (instanceId: string) => Promise<boolean>
         install: (instanceId: string, versionId: string, versionUrl: string, modLoader?: string, modLoaderVersion?: string) => Promise<void>

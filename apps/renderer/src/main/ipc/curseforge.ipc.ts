@@ -4,7 +4,7 @@ import { BrowserWindow } from 'electron'
 import { handleIpc } from './handle'
 import { getConfig } from '../services/config'
 import { downloadFile } from '../services/download'
-import { resolveInstanceDir, getInstanceById, updateInstance } from '../services/instance-store'
+import { resolveGameDir, getInstanceById, updateInstance } from '../services/instance-store'
 import { installModpackFromFile } from '../services/modpack'
 import { paths } from '../services/paths'
 import {
@@ -120,7 +120,7 @@ export function registerCurseForgeIpc(mainWindow?: BrowserWindow): void {
     }
     if (!url) throw new Error(`No download URL available for ${displayName}`)
 
-    const modsDir = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'mods')
+    const modsDir = join(resolveGameDir(String(instanceId)), 'mods')
     const safeName = basename(file.fileName)
     const dest = resolve(modsDir, safeName)
     if (relative(modsDir, dest).startsWith('..')) throw new Error(`Unsafe filename rejected: ${file.fileName}`)

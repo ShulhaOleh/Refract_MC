@@ -70,6 +70,15 @@ function instanceJsonPath(dir: string): string {
   return join(dir, 'instance.json')
 }
 
+// The directory that actually holds this instance's game content (mods, saves,
+// screenshots, servers, …). For an instance linked from another launcher this
+// is that launcher's game folder; otherwise it's our managed <instance>/minecraft.
+export function resolveGameDir(id: string): string {
+  const inst = getInstanceById(id)
+  if (inst?.externalGameDir) return inst.externalGameDir
+  return join(resolveInstanceDir(id), 'minecraft')
+}
+
 // ---------- public API ----------
 
 export function listInstances(): Instance[] {

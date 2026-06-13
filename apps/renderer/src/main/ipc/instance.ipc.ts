@@ -11,7 +11,7 @@ import { shell, dialog, BrowserWindow, app } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, cpSync, rmSync } from 'fs'
 import { spawn } from 'child_process'
-import { resolveInstanceDir } from '../services/instance-store'
+import { resolveInstanceDir, resolveGameDir } from '../services/instance-store'
 import { importMultiMcInstance } from '../services/multimc-import'
 import { paths } from '../services/paths'
 import { scanExternalInstances, type ExternalInstance } from '../services/external-launchers'
@@ -48,7 +48,7 @@ export function registerInstanceIpc(): void {
   })
 
   handleIpc('instance.openFolder', (_event, id) => {
-    const gameDir = join(resolveInstanceDir(String(id)), 'minecraft')
+    const gameDir = resolveGameDir(String(id))
     if (!existsSync(gameDir)) mkdirSync(gameDir, { recursive: true })
     shell.openPath(gameDir)
   })

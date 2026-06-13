@@ -4,7 +4,7 @@ import { createHash } from 'crypto'
 import { handleIpc } from './handle'
 import { installMod, uninstallMod } from '../services/modrinth'
 import { downloadFile } from '../services/download'
-import { resolveInstanceDir, getInstanceById } from '../services/instance-store'
+import { resolveGameDir, getInstanceById } from '../services/instance-store'
 import { searchMods, searchContent, getProjectVersions, fetchGameVersions } from '@refract/core'
 import type { ModrinthSearchOptions, ModrinthVersion } from '@refract/core'
 
@@ -90,7 +90,7 @@ export function registerModrinthIpc(): void {
   handleIpc('modrinth.checkModUpdates', async (_event, instanceId) => {
     const instance = getInstanceById(String(instanceId))
     if (!instance) return []
-    const modsDir = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'mods')
+    const modsDir = join(resolveGameDir(String(instanceId)), 'mods')
     if (!existsSync(modsDir)) return []
 
     const jars = readdirSync(modsDir).filter(f => f.endsWith('.jar') && !f.endsWith('.disabled'))
@@ -141,7 +141,7 @@ export function registerModrinthIpc(): void {
   })
 
   handleIpc('modrinth.applyModUpdates', async (_event, instanceId, updates) => {
-    const modsDir = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'mods')
+    const modsDir = join(resolveGameDir(String(instanceId)), 'mods')
     const results: UpdateResult[] = []
     for (const u of (updates as UpdateInfo[])) {
       try {

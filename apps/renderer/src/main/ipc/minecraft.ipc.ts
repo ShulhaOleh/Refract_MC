@@ -8,7 +8,7 @@ import { fetchVersionList } from '@refract/core'
 import { detectJavaInstallations } from '@refract/core/java-manager'
 import { installMinecraft, fetchForgeVersionList, fetchNeoForgeVersionList, fetchFabricLoaderVersions, fetchQuiltLoaderVersions } from '../services/minecraft/downloader'
 import { launchInstance, stopInstance, isInstanceRunning } from '../services/minecraft/launcher'
-import { resolveInstanceDir } from '../services/instance-store'
+import { resolveGameDir } from '../services/instance-store'
 import { loadManagedJavas } from '../services/java-manager'
 
 export interface ServerEntry { name: string; ip: string; icon?: string }
@@ -107,7 +107,9 @@ const fabricVersionCache = new Map<string, { data: string[]; at: number }>()
 const quiltVersionCache  = new Map<string, { data: string[]; at: number }>()
 const LOADER_VERSION_TTL = 10 * 60 * 1000  // 10 min
 
-let activeInstallController: AbortController | null = null
+// One AbortController per in-flight install, keyed by instanceId, so starting
+// a second install doesn't orphan the first's cancel handle.
+const installControllers = new Map<string, AbortController>()
 
 export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   handleIpc('mc.versions', async () => {
@@ -171,11 +173,12 @@ export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   handleIpc('mc.isRunning', (_event, instanceId) => isInstanceRunning(String(instanceId)))
 
   handleIpc('mc.install', async (_event, instanceId, versionId, versionUrl, modLoader, modLoaderVersion) => {
+    const id = String(instanceId)
     const controller = new AbortController()
-    activeInstallController = controller
+    installControllers.set(id, controller)
     try {
       const result = await installMinecraft(
-        String(instanceId),
+        id,
         String(versionId),
         String(versionUrl),
         modLoader ? String(modLoader) : undefined,
@@ -189,17 +192,21 @@ export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
       // (may be an auto-resolved "latest"). Only write it when present so we
       // never clobber an existing value with undefined for vanilla installs.
       const instanceStore = await import('../services/instance-store')
-      instanceStore.updateInstance(String(instanceId), {
+      instanceStore.updateInstance(id, {
         isInstalled: true,
         ...(result.modLoaderVersion ? { modLoaderVersion: result.modLoaderVersion } : {}),
       })
     } finally {
-      activeInstallController = null
+      installControllers.delete(id)
     }
   })
 
-  handleIpc('mc.cancelInstall', () => {
-    activeInstallController?.abort()
+  handleIpc('mc.cancelInstall', (_event, instanceId) => {
+    if (instanceId) {
+      installControllers.get(String(instanceId))?.abort()
+    } else {
+      for (const c of installControllers.values()) c.abort()
+    }
   })
 
   handleIpc('mc.repair', async (_event, instanceId) => {
@@ -237,7 +244,7 @@ export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   })
 
   handleIpc('mc.crashReport', (_event, instanceId) => {
-    const crashDir = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'crash-reports')
+    const crashDir = join(resolveGameDir(String(instanceId)), 'crash-reports')
     if (!existsSync(crashDir)) return null
     const files = readdirSync(crashDir)
       .filter(f => f.endsWith('.txt'))
@@ -248,7 +255,7 @@ export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   })
 
   handleIpc('mc.worlds', (_event, instanceId) => {
-    const savesDir = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'saves')
+    const savesDir = join(resolveGameDir(String(instanceId)), 'saves')
     if (!existsSync(savesDir)) return []
     return readdirSync(savesDir, { withFileTypes: true })
       .filter(e => e.isDirectory())
@@ -262,12 +269,12 @@ export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   })
 
   handleIpc('mc.deleteWorld', (_event, instanceId, worldName) => {
-    const worldPath = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'saves', String(worldName))
+    const worldPath = join(resolveGameDir(String(instanceId)), 'saves', String(worldName))
     if (existsSync(worldPath)) rmSync(worldPath, { recursive: true, force: true })
   })
 
   handleIpc('mc.screenshots', (_event, instanceId) => {
-    const screenshotsDir = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'screenshots')
+    const screenshotsDir = join(resolveGameDir(String(instanceId)), 'screenshots')
     if (!existsSync(screenshotsDir)) return []
     const files = readdirSync(screenshotsDir)
       .filter(f => /\.(png|jpg|jpeg)$/i.test(f))
@@ -291,12 +298,12 @@ export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   })
 
   handleIpc('mc.openScreenshot', (_event, instanceId, filename) => {
-    const p = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'screenshots', String(filename))
+    const p = join(resolveGameDir(String(instanceId)), 'screenshots', String(filename))
     return shell.openPath(p)
   })
 
   handleIpc('mc.screenshotFull', (_event, instanceId, filename) => {
-    const p = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'screenshots', String(filename))
+    const p = join(resolveGameDir(String(instanceId)), 'screenshots', String(filename))
     try {
       const img = nativeImage.createFromPath(p)
       if (img.isEmpty()) return null
@@ -308,7 +315,7 @@ export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   })
 
   handleIpc('mc.backupWorld', async (_event, instanceId, worldName) => {
-    const worldPath = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'saves', String(worldName))
+    const worldPath = join(resolveGameDir(String(instanceId)), 'saves', String(worldName))
     if (!existsSync(worldPath)) throw new Error('World not found')
     const { filePath, canceled } = await dialog.showSaveDialog({
       title: 'Save World Backup',
@@ -321,7 +328,7 @@ export function registerMinecraftIpc(mainWindow: BrowserWindow): void {
   })
 
   handleIpc('mc.servers', (_event, instanceId) => {
-    const p = join(resolveInstanceDir(String(instanceId)), 'minecraft', 'servers.dat')
+    const p = join(resolveGameDir(String(instanceId)), 'servers.dat')
     if (!existsSync(p)) return []
     try { return parseServersDat(readFileSync(p)) } catch { return [] }
   })
