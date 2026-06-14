@@ -6,17 +6,21 @@ import { paths } from './paths'
 import { getConfig } from './config'
 
 // ── Credentials ────────────────────────────────────────────────────────────
-// GA4 Measurement Protocol needs a Measurement ID (G-XXXXXXX) and an API
-// secret. They're read from the environment so they can be injected at build
-// time; until both are set the whole module is inert (no network calls), which
-// is the intended "stubbed" state. The API secret is necessarily shipped to
-// clients — that's expected for the Measurement Protocol and it grants only
-// event-ingestion for this one property.
-const MEASUREMENT_ID = process.env.GA_MEASUREMENT_ID ?? ''
-const API_SECRET = process.env.GA_API_SECRET ?? ''
+// The Measurement ID is public (it ships in every GA-instrumented client), so
+// it's hardcoded. The Measurement Protocol API secret must NOT live in this
+// public repo, so it's injected at build time from the GA_API_SECRET env via
+// the main-process `define` in electron.vite.config.ts. Until the secret is
+// provided the module stays inert (no network calls). The secret only grants
+// event ingestion to this one property.
+declare const __GA_API_SECRET__: string | undefined
+
+const MEASUREMENT_ID = 'G-MX248BTV0T'
+const API_SECRET = typeof __GA_API_SECRET__ === 'string' ? __GA_API_SECRET__ : ''
 const ENDPOINT = `https://www.google-analytics.com/mp/collect?measurement_id=${MEASUREMENT_ID}&api_secret=${API_SECRET}`
 
-const configured = (): boolean => MEASUREMENT_ID !== '' && API_SECRET !== ''
+// The Measurement ID is always present; analytics only "go live" once the
+// build-injected API secret is set.
+const configured = (): boolean => API_SECRET !== ''
 // Opt-out: analytics runs unless the user explicitly disabled it.
 const consented = (): boolean => getConfig().analyticsEnabled !== false
 

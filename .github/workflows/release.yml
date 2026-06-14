@@ -27,6 +27,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build app
+        env:
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
         run: pnpm --filter @refract/app build
 
       - name: Package and publish
@@ -70,6 +72,8 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
 
       - name: Build app
+        env:
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
         run: pnpm --filter @refract/app build
 
       - name: Package and publish
@@ -102,6 +106,8 @@ jobs:
         run: sudo apt-get install -y rpm fakeroot
 
       - name: Build app
+        env:
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
         run: pnpm --filter @refract/app build
 
       - name: Package and publish

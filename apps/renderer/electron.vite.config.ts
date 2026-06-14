@@ -20,6 +20,12 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: workspaceExclude })],
     resolve: { alias: workspaceAlias },
+    // Inline the GA Measurement Protocol API secret at build time from the
+    // environment (set as a CI secret). Empty when unset → analytics stays
+    // inert. Kept out of source so it isn't exposed in this public repo.
+    define: {
+      __GA_API_SECRET__: JSON.stringify(process.env.GA_API_SECRET ?? ''),
+    },
     build: {
       rollupOptions: {
         external: ['bufferutil', 'utf-8-validate'],
