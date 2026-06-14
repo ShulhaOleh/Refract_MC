@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+- **Collapse the sidebar from the sidebar** — a new « / » toggle in the sidebar header collapses the menu to an icon rail and back, no trip to Settings. It animates, syncs with the Settings → sidebar width control, and restores your last expanded width.
+- **Clearer expired-login handling** — when your Microsoft (or Yggdrasil) session can no longer be refreshed, Refract now shows *"Your session expired — please sign in again"* and takes you to Accounts, where the affected account has a one-click **Sign in again** button, instead of surfacing a raw error on launch.
+- **Anonymous usage analytics (opt-out)** — Refract now sends anonymous usage events (app opens, page views, launches/installs, errors) to help guide development. No personal data, accounts, or file paths are collected. It's on by default with a first-run notice and a **Settings → Privacy** toggle to turn it off at any time.
+
 ## 1.1.1
 - **Sync instances from other launchers** — a new Sync panel detects instances from Prism Launcher, MultiMC, Modrinth, ATLauncher, CurseForge, and GDLauncher, and lets you link (launch in place) or import (copy into Refract) them.
 - **Smooth page transitions** — navigating between pages now animates with a horizontal slide and blur.
