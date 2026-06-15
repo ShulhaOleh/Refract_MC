@@ -1,4 +1,5 @@
 import type { CreateInstanceInput, Instance } from '@refract/core'
+import { invoke } from '@tauri-apps/api/core'
 import { logger } from './logger'
 
 export type RefractAPI = Window['api']
@@ -362,8 +363,31 @@ function wrapApi<T>(value: T, path = 'api'): T {
 
 const electronApi = (window as Window & { api?: RefractAPI }).api
 
-if (!electronApi) {
+// Running inside the Tauri shell during migration: there's no Electron preload,
+// so build the API from Tauri commands. Domains not yet ported reuse the browser
+// fallback (so nothing crashes); ported ones call into Rust via invoke().
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+if (!electronApi && !isTauri) {
   logger.warn('browserApi', 'Electron preload API is unavailable; using browser preview storage.')
 }
 
-export const api: RefractAPI = wrapApi(electronApi ?? createBrowserApi())
+function createTauriApi(): RefractAPI {
+  const base = createBrowserApi()
+  return {
+    ...base,
+    config: {
+      ...base.config,
+      get: (() => invoke('config_get')) as RefractAPI['config']['get'],
+      set: ((key: string, value: unknown) => invoke('config_set', { key, value })) as RefractAPI['config']['set'],
+    },
+    instance: {
+      ...base.instance,
+      list: (() => invoke('instances_list')) as RefractAPI['instance']['list'],
+    },
+  }
+}
+
+export const api: RefractAPI = wrapApi(
+  electronApi ?? (isTauri ? createTauriApi() : createBrowserApi()),
+)
