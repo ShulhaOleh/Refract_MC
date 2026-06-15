@@ -1,5 +1,6 @@
 import type { CreateInstanceInput, Instance } from '@refract/core'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { logger } from './logger'
 
 export type RefractAPI = Window['api']
@@ -405,6 +406,20 @@ function createTauriApi(): RefractAPI {
       ...base.ftb,
       search: ((query?: string, limit?: number) => invoke('ftb_search', { query, limit })) as RefractAPI['ftb']['search'],
       modpack: ((id: number) => invoke('ftb_modpack', { id })) as RefractAPI['ftb']['modpack'],
+    },
+    mc: {
+      ...base.mc,
+      install: ((instanceId: string, versionId: string, versionUrl: string) =>
+        invoke('install_minecraft', { instanceId, versionId, versionUrl })) as RefractAPI['mc']['install'],
+      // Renderer expects a synchronous unsubscribe; listen() resolves async, so
+      // return a wrapper that detaches once the listener is attached.
+      onProgress: ((cb: (data: { instanceId: string; step: string; current: number; total: number; percent: number }) => void) => {
+        let off: (() => void) | undefined
+        void listen<{ instanceId: string; step: string; current: number; total: number; percent: number }>(
+          'mc://progress', e => cb(e.payload),
+        ).then(u => { off = u })
+        return () => off?.()
+      }) as RefractAPI['mc']['onProgress'],
     },
   }
 }

@@ -29,3 +29,4 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "linux-
 rand = "0.8"
 hex = "0.4"
 zeroize = "1"
+zip = "2"

@@ -14,3 +14,12 @@ pub fn data_dir() -> PathBuf {
 pub fn instances_dir() -> PathBuf {
     data_dir().join("instances")
 }
+pub fn versions_dir() -> PathBuf {
+    data_dir().join("versions")
+}
+pub fn libraries_dir() -> PathBuf {
+    data_dir().join("libraries")
+}
+pub fn assets_dir() -> PathBuf {
+    data_dir().join("assets")
+}

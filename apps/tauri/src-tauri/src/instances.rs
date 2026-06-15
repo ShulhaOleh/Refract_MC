@@ -115,7 +115,7 @@ fn unique_folder_name(desired: &str, current: Option<&str>) -> String {
 
 // ── Resolve / save ──────────────────────────────────────────────────────────
 
-fn resolve_instance_dir(id: &str) -> PathBuf {
+pub fn resolve_instance_dir(id: &str) -> PathBuf {
     if let Some(entry) = read_registry().into_iter().find(|r| r.id == id) {
         let p = PathBuf::from(&entry.path);
         if p.exists() {
