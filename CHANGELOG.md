@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.3
+- **Refreshed look** — a cleaner, flatter design across the app: a single consistent button style, calmer surfaces with the purple accent, and the pixel font and busy background effects retired.
+- **FTB modpacks** — browse, search and install Feed The Beast packs (with a version picker) right alongside Modrinth and CurseForge.
+- **Automatic Java** — Refract now downloads and picks the correct Java runtime for each version on demand, so launches and Forge/NeoForge installs no longer dead-end when the right Java isn't installed.
+- **Mod dependency resolution** — installing a mod now pulls its required dependencies automatically (recursively, for both Modrinth and CurseForge), and lets you opt into optional ones.
+- **Modpack updates** — instances created from a modpack show when a newer version is available and can update in place — your worlds, screenshots, options and server list are kept.
+- **Custom groups** — create your own instance groups, drag to reorder them, and drag instances in; works even before a group has any instances.
+- **Non-Latin instance names** — Ukrainian/Cyrillic (and other) instance names now launch reliably; the display name stays as you typed it.
+- **Honest status bar** — shows real connection status, the installed Java version, and memory instead of placeholder readouts.
+- **Fix:** Forge/NeoForge installs and Quilt launches now work; modpack mods that come from CurseForge download correctly.
+- **Fix:** scrolling inside a mod/modpack popup no longer scrolls the page behind it.
+- **Polish:** in-app dialogs for moving instances to a group and confirming deletes (no more native pop-ups), with full Ukrainian translations.
+
 ## 1.1.2
 - **Collapse the sidebar from the sidebar** — a new « / » toggle in the sidebar header collapses the menu to an icon rail and back, no trip to Settings. It animates, syncs with the Settings → sidebar width control, and restores your last expanded width.
 - **Clearer expired-login handling** — when your Microsoft (or Yggdrasil) session can no longer be refreshed, Refract now shows *"Your session expired — please sign in again"* and takes you to Accounts, where the affected account has a one-click **Sign in again** button, instead of surfacing a raw error on launch.
