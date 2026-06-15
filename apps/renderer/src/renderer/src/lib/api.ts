@@ -411,8 +411,11 @@ function createTauriApi(): RefractAPI {
       ...base.mc,
       install: ((instanceId: string, versionId: string, versionUrl: string) =>
         invoke('install_minecraft', { instanceId, versionId, versionUrl })) as RefractAPI['mc']['install'],
+      launch: ((instanceId: string) => invoke('launch_minecraft', { instanceId })) as RefractAPI['mc']['launch'],
+      stop: ((instanceId: string) => invoke('stop_minecraft', { instanceId })) as RefractAPI['mc']['stop'],
+      isRunning: ((instanceId: string) => invoke('is_running', { instanceId })) as RefractAPI['mc']['isRunning'],
       // Renderer expects a synchronous unsubscribe; listen() resolves async, so
-      // return a wrapper that detaches once the listener is attached.
+      // each wrapper detaches once its listener is actually attached.
       onProgress: ((cb: (data: { instanceId: string; step: string; current: number; total: number; percent: number }) => void) => {
         let off: (() => void) | undefined
         void listen<{ instanceId: string; step: string; current: number; total: number; percent: number }>(
@@ -420,6 +423,16 @@ function createTauriApi(): RefractAPI {
         ).then(u => { off = u })
         return () => off?.()
       }) as RefractAPI['mc']['onProgress'],
+      onLog: ((cb: (data: { instanceId: string; line: string; stream: string }) => void) => {
+        let off: (() => void) | undefined
+        void listen<{ instanceId: string; line: string; stream: string }>('mc://log', e => cb(e.payload)).then(u => { off = u })
+        return () => off?.()
+      }) as RefractAPI['mc']['onLog'],
+      onExit: ((cb: (data: { instanceId: string; code: number | null; error?: string }) => void) => {
+        let off: (() => void) | undefined
+        void listen<{ instanceId: string; code: number | null; error?: string }>('mc://exit', e => cb(e.payload)).then(u => { off = u })
+        return () => off?.()
+      }) as RefractAPI['mc']['onExit'],
     },
   }
 }

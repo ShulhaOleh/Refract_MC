@@ -3,6 +3,7 @@ mod config;
 mod content;
 mod download;
 mod instances;
+mod launch;
 mod mc_install;
 mod paths;
 mod process;
@@ -31,6 +32,9 @@ pub fn run() {
             content::curseforge_files,
             content::curseforge_project_detail,
             mc_install::install_minecraft,
+            launch::launch_minecraft,
+            launch::stop_minecraft,
+            launch::is_running,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

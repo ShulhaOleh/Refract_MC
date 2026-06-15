@@ -69,6 +69,12 @@ pub fn curseforge_api_key() -> Option<String> {
     load().get("curseforgeApiKey").and_then(Value::as_str).map(str::to_string)
 }
 
+/// Read the merged config (accounts, defaultMemoryMb, …) for non-command callers
+/// such as the launcher.
+pub fn read() -> Value {
+    load()
+}
+
 /// Equivalent of the renderer's `api.config.set(key, value)`.
 #[tauri::command]
 pub fn config_set(key: String, value: Value) -> Result<Value, String> {
