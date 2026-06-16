@@ -550,6 +550,12 @@ function createTauriApi(): RefractAPI {
       ensureFor: ((mcVersion: string) => tinvoke('java_ensure_for', { mcVersion })) as RefractAPI['java']['ensureFor'],
       download: ((major: number) => tinvoke('java_download', { major })) as RefractAPI['java']['download'],
       delete: ((major: number) => tinvoke('java_delete', { major })) as RefractAPI['java']['delete'],
+      addCustom: ((javaPath: string) => tinvoke('java_add_custom', { javaPath })) as RefractAPI['java']['addCustom'],
+      removeCustom: ((javaPath: string) => tinvoke('java_remove_custom', { javaPath })) as RefractAPI['java']['removeCustom'],
+      browseExe: (async () => {
+        const p = await dialogOpen({ multiple: false, title: 'Select Java executable' })
+        return typeof p === 'string' ? p : null
+      }) as RefractAPI['java']['browseExe'],
       onProgress: ((cb: (data: { major: number; step: string; percent: number }) => void) => {
         let off: (() => void) | undefined
         void listen<{ major: number; step: string; percent: number }>('java://progress', e => cb(e.payload)).then(u => { off = u })

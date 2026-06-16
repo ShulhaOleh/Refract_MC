@@ -61,6 +61,8 @@ pub fn run() {
             java::java_download,
             java::java_ensure_for,
             java::java_delete,
+            java::java_add_custom,
+            java::java_remove_custom,
             launch::launch_minecraft,
             launch::stop_minecraft,
             launch::is_running,

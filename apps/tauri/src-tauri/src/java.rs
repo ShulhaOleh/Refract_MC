@@ -37,10 +37,18 @@ pub struct Install {
     pub version: u32,
     pub path: String,
     pub vendor: String,
+    /// True for user-added custom paths (so the UI shows a path-based remove
+    /// rather than a managed version-based one). Absent for detected/downloaded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom: Option<bool>,
 }
 
 fn to_json(j: &Install) -> Value {
-    json!({ "version": j.version, "path": j.path, "vendor": j.vendor })
+    let mut o = json!({ "version": j.version, "path": j.path, "vendor": j.vendor });
+    if j.custom == Some(true) {
+        o["custom"] = json!(true);
+    }
+    o
 }
 
 fn exe_in_home(home: &str) -> String {
@@ -92,7 +100,7 @@ fn probe(java_exe: &Path) -> Option<Install> {
     }
     let vendor = find_prop(&text, "java.vendor").unwrap_or_else(|| "Unknown".into());
     let home = java_exe.parent()?.parent()?.to_string_lossy().to_string();
-    Some(Install { version: major, path: home, vendor })
+    Some(Install { version: major, path: home, vendor, custom: None })
 }
 
 fn scan_dir<F: FnMut(Option<Install>)>(dir: &Path, add: &mut F) {
@@ -394,6 +402,7 @@ pub async fn download_java(app: &AppHandle, major: u32) -> Result<Install, Strin
         version: major,
         path: Path::new(&java_exe).parent().and_then(Path::parent).map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
         vendor: "Adoptium Temurin".into(),
+        custom: None,
     });
 
     let mut managed: Vec<Install> = load_managed().into_iter().filter(|j| j.version != major).collect();
@@ -426,6 +435,28 @@ pub async fn java_ensure_for(app: AppHandle, mc_version: String) -> Result<u32, 
         download_java(&app, major).await?;
     }
     Ok(major)
+}
+
+/// Add a user-selected Java executable as a custom managed runtime.
+#[tauri::command]
+pub fn java_add_custom(java_path: String) -> Result<Value, String> {
+    let exe = java_path.trim();
+    if !Path::new(exe).exists() {
+        return Err(format!("File not found: {exe}"));
+    }
+    let mut install = probe(Path::new(exe)).ok_or("Not a valid Java executable — could not read version.")?;
+    install.custom = Some(true);
+    let mut managed: Vec<Install> = load_managed().into_iter().filter(|j| j.path != install.path).collect();
+    managed.push(install.clone());
+    save_managed(&managed)?;
+    Ok(to_json(&install))
+}
+
+/// Remove a custom (or managed) runtime by its home path.
+#[tauri::command]
+pub fn java_remove_custom(java_path: String) -> Result<(), String> {
+    let managed: Vec<Install> = load_managed().into_iter().filter(|j| j.path != java_path).collect();
+    save_managed(&managed)
 }
 
 #[tauri::command]
