@@ -116,6 +116,26 @@ fn unique_folder_name(desired: &str, current: Option<&str>) -> String {
 
 // ── Resolve / save ──────────────────────────────────────────────────────────
 
+/// Wipe all launcher data (the "delete everything" action): instances, content
+/// caches and the config/registry. Mirrors the Electron launcher.deleteAll.
+#[tauri::command]
+pub fn launcher_delete_all() -> Result<(), String> {
+    let data = paths::data_dir();
+    for sub in ["instances", "themes", "plugins", "java", "assets", "libraries", "versions", "cache", "logs"] {
+        let p = data.join(sub);
+        if p.exists() {
+            let _ = fs::remove_dir_all(&p);
+        }
+    }
+    for f in ["config.json", "instance-registry.json", "running.json"] {
+        let p = data.join(f);
+        if p.exists() {
+            let _ = fs::remove_file(&p);
+        }
+    }
+    Ok(())
+}
+
 /// The game directory for an instance: its external dir if set, else
 /// `<instance>/minecraft`. Shared by the mods/worlds/screenshots commands.
 pub fn game_dir(id: &str) -> PathBuf {

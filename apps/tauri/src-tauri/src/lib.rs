@@ -73,6 +73,8 @@ pub fn run() {
             modpack::curseforge_install_modpack,
             modpack::ftb_install_modpack,
             mc_install::install_minecraft,
+            mc_install::mc_repair,
+            instances::launcher_delete_all,
             java::mc_java,
             java::java_managed_list,
             java::java_required_for,

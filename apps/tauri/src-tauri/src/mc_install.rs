@@ -167,6 +167,34 @@ async fn install_loader(app: &AppHandle, iid: &str, mc: &str, loader: &str, requ
     Ok(version)
 }
 
+async fn mojang_version_url(mc: &str) -> Result<String, String> {
+    let manifest: Value = reqwest::get("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json")
+        .await
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())?;
+    manifest["versions"]
+        .as_array()
+        .and_then(|a| a.iter().find(|v| v["id"].as_str() == Some(mc)))
+        .and_then(|v| v["url"].as_str())
+        .map(String::from)
+        .ok_or(format!("Minecraft {mc} not found in Mojang manifest."))
+}
+
+/// Reinstall an instance's Minecraft + loader (the "repair" action). Reuses the
+/// install pipeline, which re-downloads missing/corrupt files and re-persists
+/// isInstalled + the resolved loader version.
+#[tauri::command]
+pub async fn mc_repair(app: AppHandle, instance_id: String) -> Result<(), String> {
+    let inst = instances::get_instance_by_id(instance_id.clone()).ok_or(format!("Instance not found: {instance_id}"))?;
+    let mc = inst.get("minecraftVersion").and_then(Value::as_str).ok_or("Instance has no Minecraft version")?.to_string();
+    let loader = inst.get("modLoader").and_then(Value::as_str).filter(|l| *l != "vanilla").map(String::from);
+    let lv = inst.get("modLoaderVersion").and_then(Value::as_str).map(String::from);
+    let url = mojang_version_url(&mc).await?;
+    install_minecraft(app, instance_id, mc, url, loader, lv).await
+}
+
 #[tauri::command]
 pub async fn install_minecraft(
     app: AppHandle,

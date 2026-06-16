@@ -539,6 +539,10 @@ function createTauriApi(): RefractAPI {
       get: (() => tinvoke('config_get')) as RefractAPI['config']['get'],
       set: ((key: string, value: unknown) => tinvoke('config_set', { key, value })) as RefractAPI['config']['set'],
     },
+    launcher: {
+      ...base.launcher,
+      deleteAll: (() => tinvoke('launcher_delete_all')) as RefractAPI['launcher']['deleteAll'],
+    },
     instance: {
       ...base.instance,
       list: (() => tinvoke('instances_list')) as RefractAPI['instance']['list'],
@@ -748,6 +752,7 @@ function createTauriApi(): RefractAPI {
         if (!dest) return null
         return tinvoke('mc_backup_world', { instanceId, worldName, destPath: dest })
       }) as RefractAPI['mc']['backupWorld'],
+      repair: ((instanceId: string) => tinvoke('mc_repair', { instanceId })) as RefractAPI['mc']['repair'],
       // Renderer expects a synchronous unsubscribe; listen() resolves async, so
       // each wrapper detaches once its listener is actually attached.
       onProgress: ((cb: (data: { instanceId: string; step: string; current: number; total: number; percent: number }) => void) => {
