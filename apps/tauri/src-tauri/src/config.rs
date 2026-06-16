@@ -70,9 +70,14 @@ pub fn curseforge_api_key() -> Option<String> {
 }
 
 /// Read the merged config (accounts, defaultMemoryMb, …) for non-command callers
-/// such as the launcher.
+/// such as the launcher and auth.
 pub fn read() -> Value {
     load()
+}
+
+/// Persist a full config object (used by auth to update accounts/activeAccountId).
+pub fn write(cfg: &Value) -> Result<(), String> {
+    save(cfg)
 }
 
 /// Equivalent of the renderer's `api.config.set(key, value)`.

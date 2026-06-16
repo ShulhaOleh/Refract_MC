@@ -88,7 +88,3 @@ pub fn get_secret(key: &str) -> Result<Option<String>, String> {
         .map_err(|e| format!("get: {e:?}"))?;
     Ok(value.map(|v| String::from_utf8_lossy(&v).to_string()))
 }
-
-pub fn has_secret(key: &str) -> bool {
-    get_secret(key).ok().flatten().is_some()
-}

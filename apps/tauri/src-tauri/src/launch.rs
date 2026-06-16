@@ -7,7 +7,7 @@
 //! (Fabric/Forge/Quilt — #25.2) and the real Microsoft token chain (#25.4)
 //! extend this; both are gated with a clear error until ported.
 
-use crate::{config, instances, paths};
+use crate::{auth, config, instances, paths};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -396,13 +396,14 @@ pub fn stop_minecraft(instance_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(), String> {
+pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(), String> {
     if is_running(instance_id.clone()) {
         return Err("Instance is already running.".into());
     }
 
-    // Active account → auth fields. Online (Microsoft) needs the XBL→MC token
-    // chain, which is the next migration step; offline accounts launch now.
+    // Active account → auth fields. Microsoft accounts get a real Minecraft token
+    // via the XBL→XSTS→MC chain (refreshed in Rust); offline accounts use the
+    // placeholder token, exactly as the Electron build does.
     let cfg = config::read();
     let active = cfg.get("activeAccountId").and_then(Value::as_str).map(String::from);
     let accounts = cfg.get("accounts").and_then(Value::as_array).cloned().unwrap_or_default();
@@ -410,17 +411,21 @@ pub fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(), Strin
         .iter()
         .find(|a| a.get("uuid").and_then(Value::as_str).map(String::from) == active)
         .ok_or("No active account. Please sign in first.")?;
-    let acc_type = account.get("type").and_then(Value::as_str).unwrap_or("offline");
-    if acc_type == "microsoft" {
-        return Err("Online (Microsoft) launch isn't wired in Tauri yet — the auth token chain is the next migration step (#25.4). Use an offline account to test launching.".into());
-    }
-    let auth = Auth {
-        username: account.get("username").and_then(Value::as_str).unwrap_or("Player").to_string(),
-        uuid: account.get("uuid").and_then(Value::as_str).unwrap_or("").to_string(),
-        access_token: "offline".into(),
-        xuid: String::new(),
-        client_id: String::new(),
-        user_type: "legacy".into(),
+    let acc_type = account.get("type").and_then(Value::as_str).unwrap_or("offline").to_string();
+    let username = account.get("username").and_then(Value::as_str).unwrap_or("Player").to_string();
+    let uuid = account.get("uuid").and_then(Value::as_str).unwrap_or("").to_string();
+
+    let auth = if acc_type == "microsoft" {
+        let (token, xuid) = auth::mc_token(&uuid).await.map_err(|e| {
+            if e == "AUTH_EXPIRED" {
+                "Your Microsoft session expired — please sign in again.".to_string()
+            } else {
+                e
+            }
+        })?;
+        Auth { username, uuid, access_token: token, xuid, client_id: auth::CLIENT_ID.to_string(), user_type: "msa".into() }
+    } else {
+        Auth { username, uuid, access_token: "offline".into(), xuid: String::new(), client_id: String::new(), user_type: "legacy".into() }
     };
 
     let instance = instances::get_instance_by_id(instance_id.clone()).ok_or(format!("Instance not found: {instance_id}"))?;

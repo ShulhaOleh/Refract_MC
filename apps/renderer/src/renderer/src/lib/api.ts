@@ -407,6 +407,20 @@ function createTauriApi(): RefractAPI {
       search: ((query?: string, limit?: number) => invoke('ftb_search', { query, limit })) as RefractAPI['ftb']['search'],
       modpack: ((id: number) => invoke('ftb_modpack', { id })) as RefractAPI['ftb']['modpack'],
     },
+    // Accounts live in the same config.json the launcher reads; Microsoft tokens
+    // are handled entirely in Rust (never returned to JS) — these commands return
+    // only safe account records / device-code prompts.
+    auth: {
+      ...base.auth,
+      accounts: (() => invoke('auth_accounts')) as RefractAPI['auth']['accounts'],
+      active: (() => invoke('auth_active')) as RefractAPI['auth']['active'],
+      microsoftBegin: (() => invoke('auth_microsoft_begin')) as RefractAPI['auth']['microsoftBegin'],
+      microsoftComplete: ((deviceCode: string) => invoke('auth_microsoft_complete', { deviceCode })) as RefractAPI['auth']['microsoftComplete'],
+      createOffline: ((username: string) => invoke('auth_create_offline', { username })) as RefractAPI['auth']['createOffline'],
+      renameOffline: ((uuid: string, username: string) => invoke('auth_rename_offline', { uuid, username })) as RefractAPI['auth']['renameOffline'],
+      setActive: ((uuid: string) => invoke('auth_set_active', { uuid })) as RefractAPI['auth']['setActive'],
+      logout: ((uuid: string) => invoke('auth_logout', { uuid })) as RefractAPI['auth']['logout'],
+    },
     mc: {
       ...base.mc,
       install: ((instanceId: string, versionId: string, versionUrl: string) =>
