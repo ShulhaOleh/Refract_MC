@@ -463,6 +463,32 @@ async function planCurseforgeDeps(file: { dependencies?: Array<Record<string, un
   return [...out.values()]
 }
 
+// ── updater (Tauri) ───────────────────────────────────────────────────────
+// The renderer expects an event-style API (onAvailable → download → onProgress →
+// onDownloaded → install). Map it onto tauri-plugin-updater: check once when the
+// first listener attaches, then download()/install() drive the rest.
+type UpdateHandle = { version: string; download: (cb: (e: { event: string; data?: { contentLength?: number; chunkLength?: number } }) => void) => Promise<void>; install: () => Promise<void> }
+const updAvailable: Array<(v: { version: string }) => void> = []
+const updProgress: Array<(v: { percent: number }) => void> = []
+const updDownloaded: Array<() => void> = []
+let pendingUpdate: UpdateHandle | null = null
+let updateChecked = false
+
+async function checkForUpdate(): Promise<void> {
+  if (updateChecked) return
+  updateChecked = true
+  try {
+    const { check } = await import('@tauri-apps/plugin-updater')
+    const update = (await check()) as unknown as (UpdateHandle & { available?: boolean }) | null
+    if (update && update.available !== false) {
+      pendingUpdate = update
+      updAvailable.forEach(cb => cb({ version: update.version }))
+    }
+  } catch (e) {
+    logger.warn('updater:check', String(e))
+  }
+}
+
 function createTauriApi(): RefractAPI {
   const base = createBrowserApi()
   return {
@@ -724,6 +750,53 @@ function createTauriApi(): RefractAPI {
         void w.onResized(() => { void w.isMaximized().then(cb) }).then(u => { off = u })
         return () => off?.()
       }) as RefractAPI['window']['onMaximizedChange'],
+    },
+    updater: {
+      ...base.updater,
+      onAvailable: ((cb: (v: { version: string }) => void) => {
+        updAvailable.push(cb)
+        void checkForUpdate() // kick the (one-time) check once someone's listening
+        return () => { const i = updAvailable.indexOf(cb); if (i >= 0) updAvailable.splice(i, 1) }
+      }) as RefractAPI['updater']['onAvailable'],
+      onProgress: ((cb: (v: { percent: number }) => void) => {
+        updProgress.push(cb)
+        return () => { const i = updProgress.indexOf(cb); if (i >= 0) updProgress.splice(i, 1) }
+      }) as RefractAPI['updater']['onProgress'],
+      onDownloaded: ((cb: () => void) => {
+        updDownloaded.push(cb)
+        return () => { const i = updDownloaded.indexOf(cb); if (i >= 0) updDownloaded.splice(i, 1) }
+      }) as RefractAPI['updater']['onDownloaded'],
+      download: (() => {
+        if (!pendingUpdate) return
+        const upd = pendingUpdate
+        void (async () => {
+          try {
+            let total = 0
+            let got = 0
+            await upd.download((e) => {
+              if (e.event === 'Started') total = e.data?.contentLength ?? 0
+              else if (e.event === 'Progress') {
+                got += e.data?.chunkLength ?? 0
+                if (total > 0) updProgress.forEach(cb => cb({ percent: Math.round((got / total) * 100) }))
+              }
+            })
+            updDownloaded.forEach(cb => cb())
+          } catch (e) {
+            logger.error('updater:download', e)
+          }
+        })()
+      }) as RefractAPI['updater']['download'],
+      install: (() => {
+        void (async () => {
+          try {
+            if (pendingUpdate) await pendingUpdate.install()
+            const { relaunch } = await import('@tauri-apps/plugin-process')
+            await relaunch()
+          } catch (e) {
+            logger.error('updater:install', e)
+          }
+        })()
+      }) as RefractAPI['updater']['install'],
     },
   }
 }
