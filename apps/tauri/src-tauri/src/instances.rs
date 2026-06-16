@@ -355,7 +355,7 @@ pub async fn export_instance(id: String, dest_path: String) -> Result<String, St
         return Err("Instance folder not found.".into());
     }
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
-        let file = fs::File::create(&dest_path).map_err(|e| e.to_string())?;
+        let file = fs::File::create(&dest_path).map_err(|e| format!("Couldn't write to {dest_path}: {e}. Pick a different folder (e.g. Downloads) or close the file if it's open."))?;
         let mut zip = zip::ZipWriter::new(file);
         let opts = zip::write::SimpleFileOptions::default();
         zip_dir(&mut zip, &dir, &dir, opts)?;
