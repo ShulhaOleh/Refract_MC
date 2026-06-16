@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { api } from '@/lib/api'
+import { api, onExportProgress } from '@/lib/api'
 import { compressImage } from '@/lib/image'
 import { getFilePath } from '@/lib/file-path'
 import type { Instance } from '@refract/core'
@@ -109,6 +109,7 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
   const [error, setError]                = useState<string | null>(null)
   const [exporting, setExporting]        = useState(false)
   const [exportMsg, setExportMsg]        = useState<string | null>(null)
+  const [exportPct, setExportPct]        = useState<number | null>(null)
   const [updatingAll, setUpdatingAll]    = useState(false)
   const [profiles, setProfiles]          = useState<ModProfile[]>([])
   const [savingProfile, setSavingProfile]= useState(false)
@@ -328,13 +329,19 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
     if (!instance || exporting) return
     setExporting(true)
     setExportMsg(null)
+    setExportPct(0)
+    const off = onExportProgress((p) => {
+      if (p.id === instance.id) setExportPct(Math.round(p.percent))
+    })
     try {
       const path = await api.instance.export(instance.id)
       if (path) setExportMsg(`Exported to ${path}`)
     } catch (e) {
       setExportMsg(`Export failed: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
+      off()
       setExporting(false)
+      setExportPct(null)
       setTimeout(() => setExportMsg(null), 5000)
     }
   }
@@ -649,6 +656,18 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
             <div style={{ flex:1 }} />
             <Button variant="ghost" size="sm" onClick={() => setSelectedMods(new Set(visible.filter(e => !e.filename.includes('/')).map(e => e.filename)))} style={{ fontSize:10, color:'var(--ink-3)' }}>{td.selectAll}</Button>
             <Button variant="ghost" size="sm" onClick={() => setSelectedMods(new Set())} style={{ fontSize:10, color:'var(--ink-4)' }}>{td.clear}</Button>
+          </div>
+        )}
+
+        {/* Export progress */}
+        {exportPct !== null && (
+          <div style={{ padding: '8px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--surface-2)', overflow: 'hidden' }}>
+              <div style={{ width: `${exportPct}%`, height: '100%', background: 'var(--accent)', transition: 'width .15s linear' }} />
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', minWidth: 64, textAlign: 'right' }}>
+              {td.exporting} {exportPct}%
+            </span>
           </div>
         )}
 

@@ -577,3 +577,16 @@ function createTauriApi(): RefractAPI {
 export const api: RefractAPI = wrapApi(
   electronApi ?? (isTauri ? createTauriApi() : createBrowserApi()),
 )
+
+/**
+ * Subscribe to instance-export progress (Tauri only). Returns a sync unsubscribe.
+ * No-op outside Tauri so callers can use it unconditionally.
+ */
+export function onExportProgress(
+  cb: (data: { id: string; current: number; total: number; percent: number }) => void,
+): () => void {
+  if (!isTauri) return () => {}
+  let off: (() => void) | undefined
+  void listen<{ id: string; current: number; total: number; percent: number }>('instance://export-progress', e => cb(e.payload)).then(u => { off = u })
+  return () => off?.()
+}
