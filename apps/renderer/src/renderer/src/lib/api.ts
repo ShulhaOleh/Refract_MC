@@ -756,6 +756,8 @@ function createTauriApi(): RefractAPI {
       screenshots: ((instanceId: string) => tinvoke('mc_screenshots', { instanceId })) as RefractAPI['mc']['screenshots'],
       openScreenshot: ((instanceId: string, filename: string) => tinvoke('mc_open_screenshot', { instanceId, filename })) as RefractAPI['mc']['openScreenshot'],
       screenshotFull: ((instanceId: string, filename: string) => tinvoke('mc_screenshot_full', { instanceId, filename })) as RefractAPI['mc']['screenshotFull'],
+      servers: ((instanceId: string) => tinvoke('mc_servers', { instanceId })) as RefractAPI['mc']['servers'],
+      pingServer: ((ip: string) => tinvoke('ping_server', { ip })) as RefractAPI['mc']['pingServer'],
       // Renderer expects a synchronous unsubscribe; listen() resolves async, so
       // each wrapper detaches once its listener is actually attached.
       onProgress: ((cb: (data: { instanceId: string; step: string; current: number; total: number; percent: number }) => void) => {

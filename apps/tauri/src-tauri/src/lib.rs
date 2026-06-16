@@ -13,6 +13,7 @@ mod mods;
 mod paths;
 mod process;
 mod secrets;
+mod servers;
 mod skins;
 
 /// Tauri entry point. Each former Electron IPC handler becomes a `#[tauri::command]`
@@ -93,6 +94,8 @@ pub fn run() {
             gamedata::mc_screenshots,
             gamedata::mc_open_screenshot,
             gamedata::mc_screenshot_full,
+            servers::mc_servers,
+            servers::ping_server,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

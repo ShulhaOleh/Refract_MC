@@ -35,3 +35,4 @@ zeroize = "1"
 zip = "2"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+fastnbt = "2"
