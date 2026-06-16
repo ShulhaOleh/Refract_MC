@@ -251,10 +251,12 @@ pub async fn auth_microsoft_complete(device_code: String) -> Result<Value, Strin
     let ok = res.status().is_success();
     let v: Value = res.json().await.map_err(|e| e.to_string())?;
     if !ok {
-        // Surface the OAuth error code verbatim so the renderer's
-        // authorization_pending / expired / declined matchers work unchanged.
+        // Surface the OAuth error code (+ description) so the renderer's
+        // authorization_pending / expired / declined matchers work and real
+        // failures show why.
         let code = v["error"].as_str().unwrap_or("unknown");
-        return Err(code.to_string());
+        let desc = v["error_description"].as_str().unwrap_or("");
+        return Err(if desc.is_empty() { code.to_string() } else { format!("{code}: {desc}") });
     }
 
     let ms_access = v["access_token"].as_str().unwrap_or_default().to_string();

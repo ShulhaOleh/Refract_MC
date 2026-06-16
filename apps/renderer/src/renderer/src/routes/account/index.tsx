@@ -129,10 +129,16 @@ function Account() {
     if (!device) return
 
     let cancelled = false
+    // Completing a poll runs the full token chain (several seconds). Guard against
+    // overlapping interval ticks — a second poll would re-send the already-redeemed
+    // device code and Microsoft answers `invalid_grant`.
+    let inFlight = false
     const currentDevice = device
     const intervalMs = Math.max(currentDevice.interval, 5) * 1000
 
     async function poll() {
+      if (inFlight) return
+      inFlight = true
       try {
         const account = await api.auth.microsoftComplete(currentDevice.deviceCode)
         if (cancelled) return
@@ -157,6 +163,8 @@ function Account() {
               ? 'Microsoft sign-in was declined.'
               : message
         )
+      } finally {
+        inFlight = false
       }
     }
 
