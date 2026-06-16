@@ -216,6 +216,7 @@ function createBrowserApi(): RefractAPI {
       minimize: () => undefined,
       maximize: () => undefined,
       close: () => undefined,
+      forceClose: () => undefined,
       isMaximized: async () => false,
       onMaximizedChange: () => () => undefined,
     },
@@ -520,9 +521,11 @@ async function registerQuitInstaller(): Promise<void> {
       event.preventDefault()
       try {
         await pendingUpdate.install()
+        const { relaunch } = await import('@tauri-apps/plugin-process')
+        await relaunch()
       } catch (e) {
         logger.error('updater:quit-install', String(e))
-        await w.destroy() // install failed — honour the quit anyway
+        await w.close() // install failed — honour the quit anyway (installingOnQuit guards re-entry)
       }
     })
   } catch (e) {
@@ -843,6 +846,9 @@ function createTauriApi(): RefractAPI {
       minimize: () => { void getCurrentWindow().minimize() },
       maximize: () => { void getCurrentWindow().toggleMaximize() },
       close: () => { void getCurrentWindow().close() },
+      // `destroy` was dropped from the desktop capability when it was hardened,
+      // so route forceClose through the permitted graceful close() instead.
+      forceClose: () => { void getCurrentWindow().close() },
       isMaximized: (() => getCurrentWindow().isMaximized()) as RefractAPI['window']['isMaximized'],
       onMaximizedChange: ((cb: (maximized: boolean) => void) => {
         let off: (() => void) | undefined

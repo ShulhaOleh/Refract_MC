@@ -25,13 +25,14 @@ function WinBtn({ onClick, danger, children }: { onClick: () => void; danger?: b
   const [hover, setHover] = useState(false)
   return (
     <button
+      className="no-drag-region"
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
         width: 46, height: '100%',
         background: hover ? (danger ? '#c42b1c' : 'rgba(255,255,255,.08)') : 'transparent',
-        border: 'none', cursor: 'default', padding: 0,
+        border: 'none', cursor: 'pointer', padding: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: hover && danger ? '#fff' : 'var(--ink-3)',
         flexShrink: 0,
@@ -100,10 +101,9 @@ export function TitleBar() {
         gridColumn: '1 / -1',
         display: 'flex', alignItems: 'center',
         height: 32,
-        background: 'var(--sb)',
-        borderBottom: '1px solid var(--line)',
+        background: 'color-mix(in srgb, var(--sb) 88%, transparent)',
         color: 'var(--ink-3)',
-        fontSize: 11.5, fontWeight: 500, letterSpacing: '.01em',
+        fontSize: 11.5, fontWeight: 600, letterSpacing: '.01em',
         userSelect: 'none',
         position: 'relative',
       }}
@@ -120,7 +120,7 @@ export function TitleBar() {
           <circle r="24" fill="#1B044F"/>
           <circle r="6" fill="#ECE4FF"/>
         </svg>
-        <b style={{ color: 'var(--ink)', fontWeight: 600 }}>Refract Launcher</b>
+        <b style={{ color: 'var(--ink)', fontWeight: 700 }}>Refract Launcher</b>
         {crumb && <span style={{ color: 'var(--ink-3)' }}>/ {crumb}</span>}
       </div>
 
@@ -131,7 +131,6 @@ export function TitleBar() {
         <div className="no-drag-region" style={{
           display: 'flex', alignItems: 'center', gap: 8, marginRight: 6, padding: '0 8px', height: 22, borderRadius: 'var(--radius-sm)',
           background: update.phase === 'ready' ? 'rgba(74,222,128,.12)' : 'rgba(255,255,255,.06)',
-          border: `1px solid ${update.phase === 'ready' ? 'rgba(74,222,128,.35)' : 'var(--line)'}`,
         }}>
           {update.phase === 'ready' ? (
             <>
@@ -191,9 +190,7 @@ export function TitleBar() {
             position: 'absolute', top: 'calc(100% + 4px)', right: 0,
             width: 260,
             background: 'var(--surface-2)',
-            border: '1px solid var(--line)',
             borderRadius: 'var(--radius-md)',
-            boxShadow: 'var(--shadow-raised)',
             zIndex: 9999,
             overflow: 'hidden',
           }}>
