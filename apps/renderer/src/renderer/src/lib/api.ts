@@ -1,6 +1,7 @@
 import type { CreateInstanceInput, Instance } from '@refract/core'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { logger } from './logger'
 
 export type RefractAPI = Window['api']
@@ -543,6 +544,21 @@ function createTauriApi(): RefractAPI {
         void listen<{ major: number; step: string; percent: number }>('java://progress', e => cb(e.payload)).then(u => { off = u })
         return () => off?.()
       }) as RefractAPI['java']['onProgress'],
+    },
+    // Custom-titlebar controls — the Tauri window is frameless (decorations:false),
+    // so these drive the native window via Tauri's window API.
+    window: {
+      ...base.window,
+      minimize: () => { void getCurrentWindow().minimize() },
+      maximize: () => { void getCurrentWindow().toggleMaximize() },
+      close: () => { void getCurrentWindow().close() },
+      isMaximized: (() => getCurrentWindow().isMaximized()) as RefractAPI['window']['isMaximized'],
+      onMaximizedChange: ((cb: (maximized: boolean) => void) => {
+        let off: (() => void) | undefined
+        const w = getCurrentWindow()
+        void w.onResized(() => { void w.isMaximized().then(cb) }).then(u => { off = u })
+        return () => off?.()
+      }) as RefractAPI['window']['onMaximizedChange'],
     },
   }
 }
