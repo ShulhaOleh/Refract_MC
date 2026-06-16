@@ -6,6 +6,7 @@ mod instances;
 mod java;
 mod launch;
 mod mc_install;
+mod modpack;
 mod mods;
 mod paths;
 mod process;
@@ -45,6 +46,9 @@ pub fn run() {
             mods::mods_install_local,
             mods::install_mod_file,
             mods::uninstall_mod,
+            modpack::modpack_install,
+            modpack::curseforge_install_modpack,
+            modpack::ftb_install_modpack,
             mc_install::install_minecraft,
             java::mc_java,
             java::java_managed_list,

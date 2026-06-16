@@ -429,11 +429,32 @@ function createTauriApi(): RefractAPI {
         }
         return tinvoke('install_mod_file', { instanceId, url, fileName: file.fileName, mod })
       }) as RefractAPI['curseforge']['install'],
+      installModpack: ((name: string, modId: number, fileId: number) =>
+        tinvoke('curseforge_install_modpack', { name, modId, fileId })) as RefractAPI['curseforge']['installModpack'],
     },
     ftb: {
       ...base.ftb,
       search: ((query?: string, limit?: number) => tinvoke('ftb_search', { query, limit })) as RefractAPI['ftb']['search'],
       modpack: ((id: number) => tinvoke('ftb_modpack', { id })) as RefractAPI['ftb']['modpack'],
+      installModpack: ((name: string, packId: number, versionId: number) =>
+        tinvoke('ftb_install_modpack', { name, packId, versionId })) as RefractAPI['ftb']['installModpack'],
+    },
+    // Modpack install (Modrinth .mrpack / CF / FTB) — each downloads files,
+    // reuses install_minecraft, and streams modpack://progress + modpack://done.
+    modpack: {
+      ...base.modpack,
+      install: ((name: string, projectId: string, versionId?: string) =>
+        tinvoke('modpack_install', { name, projectId, versionId })) as RefractAPI['modpack']['install'],
+      onProgress: ((cb: (data: { projectId: string; step: string; percent: number }) => void) => {
+        let off: (() => void) | undefined
+        void listen<{ projectId: string; step: string; percent: number }>('modpack://progress', e => cb(e.payload)).then(u => { off = u })
+        return () => off?.()
+      }) as RefractAPI['modpack']['onProgress'],
+      onDone: ((cb: (data: { projectId: string; instanceId?: string; error?: string }) => void) => {
+        let off: (() => void) | undefined
+        void listen<{ projectId: string; instanceId?: string; error?: string }>('modpack://done', e => cb(e.payload)).then(u => { off = u })
+        return () => off?.()
+      }) as RefractAPI['modpack']['onDone'],
     },
     // Modrinth metadata is fetched in the WebView (CORS-open core helpers); only
     // the file download + instance.json write happen in Rust.
