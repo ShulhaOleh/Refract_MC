@@ -96,6 +96,14 @@ pub async fn curseforge_files(mod_id: i64, game_version: Option<String>, loader:
     Ok(body.get("data").cloned().unwrap_or(Value::Array(vec![])))
 }
 
+/// Resolve a download URL for a CurseForge file whose `downloadUrl` came back
+/// null (CF's API nulls it for some projects). Returns the raw `data` string.
+#[tauri::command]
+pub async fn curseforge_download_url(mod_id: i64, file_id: i64) -> Result<String, String> {
+    let body = cf_get(format!("{CF}/mods/{mod_id}/files/{file_id}/download-url"), &[]).await?;
+    body.get("data").and_then(Value::as_str).map(str::to_string).ok_or("No download URL available".into())
+}
+
 #[tauri::command]
 pub async fn curseforge_project_detail(mod_id: i64) -> Result<Value, String> {
     let proj = cf_get(format!("{CF}/mods/{mod_id}"), &[]).await?;

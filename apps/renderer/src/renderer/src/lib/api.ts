@@ -411,11 +411,59 @@ function createTauriApi(): RefractAPI {
       files: ((modId: number, gameVersion?: string, loader?: string) =>
         tinvoke('curseforge_files', { modId, gameVersion, loader })) as RefractAPI['curseforge']['files'],
       projectDetail: ((modId: number) => tinvoke('curseforge_project_detail', { modId })) as RefractAPI['curseforge']['projectDetail'],
+      install: (async (instanceId: string, modId: number, fileId: number, displayName: string) => {
+        const instance = await tinvoke('get_instance_by_id', { id: instanceId }) as Instance | null
+        if (!instance) throw new Error(`Instance not found: ${instanceId}`)
+        const files = await tinvoke('curseforge_files', { modId }) as Array<Record<string, unknown>>
+        const file = files.find(f => f.id === fileId)
+        if (!file) throw new Error(`CurseForge file ${fileId} not found`)
+        let url = file.downloadUrl as string | undefined
+        if (!url) url = await tinvoke('curseforge_download_url', { modId, fileId }) as string
+        if (!url) throw new Error(`No download URL available for ${displayName}`)
+        const gameVersions = (file.gameVersions as string[] | undefined) ?? []
+        const gameVersion = gameVersions.find(v => !/^(forge|fabric|neoforge|quilt)/i.test(v)) ?? instance.minecraftVersion
+        const mod = {
+          projectId: `cf:${modId}`, versionId: String(fileId), name: displayName,
+          fileName: file.fileName as string, fileSize: file.fileLength as number,
+          loader: instance.modLoader ?? 'unknown', gameVersion, installedAt: new Date().toISOString(),
+        }
+        return tinvoke('install_mod_file', { instanceId, url, fileName: file.fileName, mod })
+      }) as RefractAPI['curseforge']['install'],
     },
     ftb: {
       ...base.ftb,
       search: ((query?: string, limit?: number) => tinvoke('ftb_search', { query, limit })) as RefractAPI['ftb']['search'],
       modpack: ((id: number) => tinvoke('ftb_modpack', { id })) as RefractAPI['ftb']['modpack'],
+    },
+    // Modrinth metadata is fetched in the WebView (CORS-open core helpers); only
+    // the file download + instance.json write happen in Rust.
+    modrinth: {
+      ...base.modrinth,
+      install: (async (instanceId: string, projectId: string, projectName: string, versionId?: string) => {
+        const instance = await tinvoke('get_instance_by_id', { id: instanceId }) as Instance | null
+        if (!instance) throw new Error(`Instance not found: ${instanceId}`)
+        const { getProjectVersions, getPrimaryFile } = await import('@refract/core')
+        const versions = await getProjectVersions(projectId, instance.minecraftVersion, instance.modLoader)
+        let target = versionId ? versions.find(v => v.id === versionId) : versions[0]
+        if (!target) target = versions[0]
+        if (!target) throw new Error(`No compatible version of ${projectName} found for MC ${instance.minecraftVersion} with ${instance.modLoader ?? 'vanilla'}`)
+        const file = getPrimaryFile(target)
+        if (!file) throw new Error(`No download file found for ${projectName} ${target.version_number}`)
+        const mod = {
+          projectId, versionId: target.id, name: projectName, fileName: file.filename, fileSize: file.size,
+          loader: target.loaders[0] ?? 'unknown', gameVersion: target.game_versions[0] ?? instance.minecraftVersion,
+          installedAt: new Date().toISOString(),
+        }
+        return tinvoke('install_mod_file', { instanceId, url: file.url, fileName: file.filename, mod })
+      }) as RefractAPI['modrinth']['install'],
+      uninstall: ((instanceId: string, projectId: string) => tinvoke('uninstall_mod', { instanceId, projectId })) as RefractAPI['modrinth']['uninstall'],
+    },
+    mods: {
+      ...base.mods,
+      list: ((instanceId: string) => tinvoke('mods_list', { instanceId })) as RefractAPI['mods']['list'],
+      toggle: ((instanceId: string, filename: string, type: string) => tinvoke('mods_toggle', { instanceId, filename, type })) as RefractAPI['mods']['toggle'],
+      delete: ((instanceId: string, filename: string, type: string) => tinvoke('mods_delete', { instanceId, filename, type })) as RefractAPI['mods']['delete'],
+      installLocal: ((instanceId: string, srcPath: string) => tinvoke('mods_install_local', { instanceId, srcPath })) as RefractAPI['mods']['installLocal'],
     },
     // Accounts live in the same config.json the launcher reads; Microsoft tokens
     // are handled entirely in Rust (never returned to JS) — these commands return

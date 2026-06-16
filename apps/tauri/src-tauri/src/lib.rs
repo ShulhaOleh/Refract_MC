@@ -6,6 +6,7 @@ mod instances;
 mod java;
 mod launch;
 mod mc_install;
+mod mods;
 mod paths;
 mod process;
 mod secrets;
@@ -36,7 +37,14 @@ pub fn run() {
             content::ftb_modpack,
             content::curseforge_search,
             content::curseforge_files,
+            content::curseforge_download_url,
             content::curseforge_project_detail,
+            mods::mods_list,
+            mods::mods_toggle,
+            mods::mods_delete,
+            mods::mods_install_local,
+            mods::install_mod_file,
+            mods::uninstall_mod,
             mc_install::install_minecraft,
             java::mc_java,
             java::java_managed_list,
