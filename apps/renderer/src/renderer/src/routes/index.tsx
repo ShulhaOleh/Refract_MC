@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button'
 import { useInstances, useCreateInstance, useUpdateInstance, useDeleteInstance } from '@/hooks/use-instances'
 import { api, type AppConfig } from '@/lib/api'
 import { getFilePath } from '@/lib/file-path'
+import { registerNativeDropTarget } from '@/lib/native-drop'
 
 export const Route = createFileRoute('/')({
   component: Library,
@@ -119,16 +120,23 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
   const [dragOver, setDragOver] = useState(false)
   const [bannerHover, setBannerHover] = useState(false)
   const label = isRunning ? t.home.stop : instance.isInstalled ? t.home.play : t.home.install
+  useEffect(() => registerNativeDropTarget(
+    instance.id,
+    paths => paths.filter(p => /\.(jar|zip)$/i.test(p)).forEach(onDropJar),
+    setDragOver,
+  ), [instance.id, onDropJar])
   return (
     <div
+      data-instance-drop-id={instance.id}
       onDragOver={e => { e.preventDefault(); if ([...e.dataTransfer.items].some(i => i.kind === 'file')) setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={e => {
         e.preventDefault()
         setDragOver(false)
-        const file = e.dataTransfer.files[0]
-        const path = file && getFilePath(file)
-        if (path) onDropJar(path)
+        for (const file of [...e.dataTransfer.files]) {
+          const path = getFilePath(file)
+          if (path && /\.(jar|zip)$/i.test(path)) onDropJar(path)
+        }
       }}
       style={{
         width: 300,
