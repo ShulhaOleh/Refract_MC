@@ -13,6 +13,7 @@ mod mc_install;
 mod modpack;
 mod mods;
 mod net;
+mod news;
 mod paths;
 mod secrets;
 mod servers;
@@ -78,6 +79,7 @@ pub fn run() {
             content::curseforge_files,
             content::curseforge_download_url,
             content::curseforge_project_detail,
+            news::minecraft_news,
             mods::mods_list,
             mods::mods_toggle,
             mods::mods_delete,

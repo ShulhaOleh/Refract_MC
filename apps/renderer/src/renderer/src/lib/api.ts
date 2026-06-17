@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { open as dialogOpen, save as dialogSave } from '@tauri-apps/plugin-dialog'
 import { logger } from './logger'
+import { fetchMinecraftNews } from '../../../shared/minecraft-news'
 
 export type RefractAPI = Window['api']
 export type SafeAccount = Awaited<ReturnType<RefractAPI['auth']['accounts']>>[number]
@@ -229,6 +230,9 @@ function createBrowserApi(): RefractAPI {
         writeJson('refract.activity', entries)
         return entry
       },
+    },
+    news: {
+      list: fetchMinecraftNews,
     },
     modrinth: {
       search: async (query: string, gameVersion?: string, loader?: string, category?: string, limit = 20, offset = 0) => {
@@ -541,6 +545,9 @@ function createTauriApi(): RefractAPI {
     // injection and privacy behavior are ported for this runtime.
     analytics: {
       track: () => undefined,
+    },
+    news: {
+      list: (() => tinvoke('minecraft_news')) as RefractAPI['news']['list'],
     },
     config: {
       ...base.config,

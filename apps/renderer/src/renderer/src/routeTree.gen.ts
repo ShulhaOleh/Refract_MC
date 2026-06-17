@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SkinsIndexRouteImport } from './routes/skins/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as NewsIndexRouteImport } from './routes/news/index'
 import { Route as ModpacksIndexRouteImport } from './routes/modpacks/index'
 import { Route as BrowseIndexRouteImport } from './routes/browse/index'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
@@ -29,6 +30,11 @@ const SkinsIndexRoute = SkinsIndexRouteImport.update({
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/settings/',
   path: '/settings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsIndexRoute = NewsIndexRouteImport.update({
+  id: '/news/',
+  path: '/news/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModpacksIndexRoute = ModpacksIndexRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/account/': typeof AccountIndexRoute
   '/browse/': typeof BrowseIndexRoute
   '/modpacks/': typeof ModpacksIndexRoute
+  '/news/': typeof NewsIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/skins/': typeof SkinsIndexRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountIndexRoute
   '/browse': typeof BrowseIndexRoute
   '/modpacks': typeof ModpacksIndexRoute
+  '/news': typeof NewsIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/skins': typeof SkinsIndexRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/account/': typeof AccountIndexRoute
   '/browse/': typeof BrowseIndexRoute
   '/modpacks/': typeof ModpacksIndexRoute
+  '/news/': typeof NewsIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/skins/': typeof SkinsIndexRoute
 }
@@ -79,16 +88,25 @@ export interface FileRouteTypes {
     | '/account/'
     | '/browse/'
     | '/modpacks/'
+    | '/news/'
     | '/settings/'
     | '/skins/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/account' | '/browse' | '/modpacks' | '/settings' | '/skins'
+  to:
+    | '/'
+    | '/account'
+    | '/browse'
+    | '/modpacks'
+    | '/news'
+    | '/settings'
+    | '/skins'
   id:
     | '__root__'
     | '/'
     | '/account/'
     | '/browse/'
     | '/modpacks/'
+    | '/news/'
     | '/settings/'
     | '/skins/'
   fileRoutesById: FileRoutesById
@@ -98,6 +116,7 @@ export interface RootRouteChildren {
   AccountIndexRoute: typeof AccountIndexRoute
   BrowseIndexRoute: typeof BrowseIndexRoute
   ModpacksIndexRoute: typeof ModpacksIndexRoute
+  NewsIndexRoute: typeof NewsIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
   SkinsIndexRoute: typeof SkinsIndexRoute
 }
@@ -123,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news/': {
+      id: '/news/'
+      path: '/news'
+      fullPath: '/news/'
+      preLoaderRoute: typeof NewsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modpacks/': {
@@ -154,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountIndexRoute: AccountIndexRoute,
   BrowseIndexRoute: BrowseIndexRoute,
   ModpacksIndexRoute: ModpacksIndexRoute,
+  NewsIndexRoute: NewsIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
   SkinsIndexRoute: SkinsIndexRoute,
 }

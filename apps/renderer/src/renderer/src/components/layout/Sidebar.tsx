@@ -23,6 +23,14 @@ const modpacksIcon   = svgDataUrl(modpacksIconRaw)
 const accountIcon    = svgDataUrl(accountIconRaw)
 const settingsIcon   = svgDataUrl(settingsIconRaw)
 const skinsIcon      = svgDataUrl(skinsIconRaw)
+const newsIcon       = svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 6h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/>
+  <path d="M4 10h16"/>
+  <path d="M8 6v12"/>
+  <path d="M12 10h4"/>
+  <path d="M12 14h4"/>
+</svg>`)
 
 function NavIcon({ src, size = 18 }: { src: string; size?: number }) {
   return (
@@ -559,6 +567,7 @@ export function Sidebar() {
   const navItems: NavItemProps[] = [
     { to: '/',          label: t.nav.library,    iconSrc: libraryIcon,    exact: true  },
     { to: '/browse/',   label: t.nav.browse,     iconSrc: browseModsIcon, exact: false },
+    { to: '/news/',     label: 'News',           iconSrc: newsIcon,       exact: false },
     { to: '/modpacks/', label: t.nav.content,    iconSrc: modpacksIcon,   exact: false },
     { to: '/skins',     label: t.skins.navLabel, iconSrc: skinsIcon,      exact: false },
   ]

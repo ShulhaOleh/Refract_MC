@@ -1,5 +1,6 @@
 import { ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
+import { fetchMinecraftNews } from '../shared/minecraft-news'
 
 export const api = {
   config: {
@@ -109,6 +110,10 @@ export const api = {
   activity: {
     list: (): Promise<Array<{ id: string; label: string; ts: number }>> => ipcRenderer.invoke('activity.list'),
     add:  (label: string): Promise<{ id: string; label: string; ts: number }> => ipcRenderer.invoke('activity.add', label),
+  },
+  news: {
+    list: (): Promise<Array<{ title: string; summary: string; imageUrl: string | null; url: string; publishedAt?: string | null }>> =>
+      fetchMinecraftNews(),
   },
   modrinth: {
     search:    (query: string, gameVersion?: string, loader?: string, category?: string, limit?: number, offset?: number) =>
