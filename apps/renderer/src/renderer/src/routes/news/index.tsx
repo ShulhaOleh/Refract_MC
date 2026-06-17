@@ -31,6 +31,14 @@ function MinecraftNewsPage() {
     void load()
   }, [load])
 
+  async function openArticle(url: string) {
+    try {
+      await api.news.open(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to open article.')
+    }
+  }
+
   return (
     <div className="library-dashboard">
       <div className="library-hero">
@@ -113,7 +121,8 @@ function MinecraftNewsPage() {
 
                 <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                   <button
-                    onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
+                    type="button"
+                    onClick={() => { void openArticle(item.url) }}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',

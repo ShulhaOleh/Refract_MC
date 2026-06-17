@@ -80,6 +80,7 @@ pub fn run() {
             content::curseforge_download_url,
             content::curseforge_project_detail,
             news::minecraft_news,
+            news::open_minecraft_news_article,
             mods::mods_list,
             mods::mods_toggle,
             mods::mods_delete,

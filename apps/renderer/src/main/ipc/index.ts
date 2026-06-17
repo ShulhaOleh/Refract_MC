@@ -6,6 +6,7 @@ import { registerThemeIpc } from './theme.ipc'
 import { registerAuthIpc } from './auth.ipc'
 import { registerLogIpc } from './log.ipc'
 import { registerActivityIpc } from './activity.ipc'
+import { registerNewsIpc } from './news.ipc'
 import { registerModrinthIpc } from './modrinth.ipc'
 import { registerMinecraftIpc } from './minecraft.ipc'
 import { registerModpackIpc } from './modpack.ipc'
@@ -25,6 +26,7 @@ export function registerAllIpcHandlers(mainWindow: BrowserWindow): void {
   registerThemeIpc()
   registerAuthIpc()
   registerActivityIpc()
+  registerNewsIpc()
   registerModrinthIpc()
   registerMinecraftIpc(mainWindow)
   registerModpackIpc(mainWindow)

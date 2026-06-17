@@ -114,6 +114,7 @@ export const api = {
   news: {
     list: (): Promise<Array<{ title: string; summary: string; imageUrl: string | null; url: string; publishedAt?: string | null }>> =>
       fetchMinecraftNews(),
+    open: (url: string): Promise<void> => ipcRenderer.invoke('news.open', url),
   },
   modrinth: {
     search:    (query: string, gameVersion?: string, loader?: string, category?: string, limit?: number, offset?: number) =>

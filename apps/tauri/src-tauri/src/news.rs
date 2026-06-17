@@ -1,6 +1,7 @@
 use regex::Regex;
 use serde::Serialize;
 use std::collections::HashSet;
+use std::process::Command;
 
 const NEWS_HUB_URL: &str = "https://www.minecraft.net/en-us/article";
 const NEWS_BASE_URL: &str = "https://www.minecraft.net";
@@ -18,6 +19,17 @@ pub struct MinecraftNewsItem {
 
 fn client() -> reqwest::Client {
     reqwest::Client::new()
+}
+
+fn validate_minecraft_article_url(value: &str) -> Result<String, String> {
+    let url = reqwest::Url::parse(value).map_err(|_| "Invalid article URL.".to_string())?;
+    if url.scheme() != "https"
+        || url.host_str() != Some("www.minecraft.net")
+        || !url.path().starts_with("/en-us/article")
+    {
+        return Err("Only official Minecraft article URLs can be opened.".into());
+    }
+    Ok(url.to_string())
 }
 
 fn decode_html(value: &str) -> String {
@@ -133,4 +145,33 @@ pub async fn minecraft_news() -> Result<Vec<MinecraftNewsItem>, String> {
     }
 
     Ok(items)
+}
+
+#[tauri::command]
+pub fn open_minecraft_news_article(url: String) -> Result<(), String> {
+    let url = validate_minecraft_article_url(&url)?;
+
+    #[cfg(target_os = "windows")]
+    let mut cmd = {
+        let mut cmd = Command::new("explorer");
+        cmd.arg(&url);
+        cmd
+    };
+
+    #[cfg(target_os = "macos")]
+    let mut cmd = {
+        let mut cmd = Command::new("open");
+        cmd.arg(&url);
+        cmd
+    };
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut cmd = {
+        let mut cmd = Command::new("xdg-open");
+        cmd.arg(&url);
+        cmd
+    };
+
+    cmd.spawn().map_err(|e| e.to_string())?;
+    Ok(())
 }

@@ -233,6 +233,9 @@ function createBrowserApi(): RefractAPI {
     },
     news: {
       list: fetchMinecraftNews,
+      open: async (url: string) => {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      },
     },
     modrinth: {
       search: async (query: string, gameVersion?: string, loader?: string, category?: string, limit = 20, offset = 0) => {
@@ -548,6 +551,7 @@ function createTauriApi(): RefractAPI {
     },
     news: {
       list: (() => tinvoke('minecraft_news')) as RefractAPI['news']['list'],
+      open: ((url: string) => tinvoke('open_minecraft_news_article', { url })) as RefractAPI['news']['open'],
     },
     config: {
       ...base.config,

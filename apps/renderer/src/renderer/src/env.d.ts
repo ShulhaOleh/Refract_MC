@@ -212,6 +212,7 @@ declare global {
       }
       news: {
         list: () => Promise<Array<{ title: string; summary: string; imageUrl: string | null; url: string; publishedAt?: string | null }>>
+        open: (url: string) => Promise<void>
       }
       modrinth: {
         search: (query: string, gameVersion?: string, loader?: string, category?: string, limit?: number, offset?: number) => Promise<import('@refract/core').ModrinthSearchResult>
