@@ -230,6 +230,25 @@ pub async fn install_mod_file(instance_id: String, url: String, file_name: Strin
     Ok(r#mod)
 }
 
+#[tauri::command]
+pub async fn install_content_file(instance_id: String, url: String, file_name: String, content_type: String) -> Result<String, String> {
+    match content_type.as_str() {
+        "resourcepack" | "shader" | "datapack" => {}
+        _ => return Err(format!("Unsupported content type: {content_type}")),
+    }
+
+    let dir = game_dir(&instance_id).join(subdir_for(&content_type));
+    let safe = Path::new(&file_name).file_name().ok_or("invalid filename")?.to_string_lossy().to_string();
+    let dest = dir.join(&safe);
+    let disabled = dir.join(format!("{safe}.disabled"));
+    if dest.exists() || disabled.exists() {
+        return Err(format!("{safe} is already downloaded for this instance."));
+    }
+
+    download_to(&url, &dest).await?;
+    Ok(safe)
+}
+
 // ── mod profiles (saved enabled-mod sets) ────────────────────────────────────
 
 fn profiles_path(instance_id: &str) -> PathBuf {

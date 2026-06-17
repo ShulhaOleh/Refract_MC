@@ -557,6 +557,13 @@ function createTauriApi(): RefractAPI {
       read: ((limit?: number) => tinvoke('logs_read', { limit })) as RefractAPI['log']['read'],
       clear: (() => tinvoke('logs_clear')) as RefractAPI['log']['clear'],
     },
+    friends: {
+      ...base.friends,
+      list: (() => tinvoke('friends_list')) as RefractAPI['friends']['list'],
+      add: ((username: string) => tinvoke('friends_add', { username })) as RefractAPI['friends']['add'],
+      remove: ((uuid: string) => tinvoke('friends_remove', { uuid })) as RefractAPI['friends']['remove'],
+      updateNote: ((uuid: string, note: string) => tinvoke('friends_update_note', { uuid, note })) as RefractAPI['friends']['updateNote'],
+    },
     skins: {
       ...base.skins,
       list: (() => tinvoke('skins_list')) as RefractAPI['skins']['list'],
@@ -726,6 +733,25 @@ function createTauriApi(): RefractAPI {
         }
         return tinvoke('install_mod_file', { instanceId, url: file.url, fileName: file.filename, mod })
       }) as RefractAPI['modrinth']['install'],
+      contentInstall: (async (instanceId: string, projectId: string, projectName: string, contentType: string, versionId?: string) => {
+        const instance = await tinvoke('get_instance_by_id', { id: instanceId }) as Instance | null
+        if (!instance) throw new Error(`Instance not found: ${instanceId}`)
+        const { getProjectVersions, getPrimaryFile } = await import('@refract/core')
+        const versions = await getProjectVersions(projectId, instance.minecraftVersion)
+        let target = versionId ? versions.find(v => v.id === versionId) : versions[0]
+        if (!target) target = versions[0]
+        if (!target) throw new Error(`No compatible version of ${projectName} found.`)
+        const file = getPrimaryFile(target)
+        if (!file) throw new Error(`No download file found for ${projectName}.`)
+        const knownFiles = new Set(versions.map(v => getPrimaryFile(v)?.filename).filter((name): name is string => !!name))
+        const installed = await tinvoke('mods_list', { instanceId }) as Array<{ filename: string; type: string }>
+        if (installed.some(entry =>
+          entry.type === contentType && (knownFiles.has(entry.filename) || (entry.filename.endsWith('.disabled') && knownFiles.has(entry.filename.slice(0, -'.disabled'.length)))),
+        )) {
+          throw new Error(`${projectName} is already downloaded for this instance.`)
+        }
+        await tinvoke('install_content_file', { instanceId, url: file.url, fileName: file.filename, contentType })
+      }) as RefractAPI['modrinth']['contentInstall'],
       uninstall: ((instanceId: string, projectId: string) => tinvoke('uninstall_mod', { instanceId, projectId })) as RefractAPI['modrinth']['uninstall'],
     },
     mods: {

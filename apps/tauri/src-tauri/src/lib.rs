@@ -4,6 +4,7 @@ mod content;
 mod download;
 mod external;
 mod forge;
+mod friends;
 mod gamedata;
 mod instances;
 mod java;
@@ -72,6 +73,10 @@ pub fn run() {
             content::quilt_versions,
             forge::mc_forge_versions,
             forge::mc_neoforge_versions,
+            friends::friends_list,
+            friends::friends_add,
+            friends::friends_remove,
+            friends::friends_update_note,
             content::curseforge_search,
             content::curseforge_files,
             content::curseforge_download_url,
@@ -81,6 +86,7 @@ pub fn run() {
             mods::mods_delete,
             mods::mods_install_local,
             mods::install_mod_file,
+            mods::install_content_file,
             mods::uninstall_mod,
             mods::mods_profiles_list,
             mods::mods_profiles_save,

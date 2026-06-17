@@ -33,6 +33,10 @@ const COLOR_FIELDS: Array<{ key: keyof ThemeColors; label: string }> = [
 
 const SWATCH_KEYS: Array<keyof ThemeColors> = ['accent', 'bg-base', 'bg-surface', 'text-primary']
 
+function cssUrl(value: string): string {
+  return `url(${JSON.stringify(value)})`
+}
+
 function slugify(name: string): string {
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   const rand = Math.random().toString(36).slice(2, 6)
@@ -158,7 +162,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
             style={{
               height: 54,
               borderRadius: 7,
-              backgroundImage: `linear-gradient(rgba(0,0,0,.20), rgba(0,0,0,.20)), url("${theme.backgroundImage.replace(/"/g, '\\"')}")`,
+              backgroundImage: `linear-gradient(rgba(0,0,0,.20), rgba(0,0,0,.20)), ${cssUrl(theme.backgroundImage)}`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
@@ -275,7 +279,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
                       minHeight: 120,
                       borderRadius: 10,
                       overflow: 'hidden',
-                      backgroundImage: `linear-gradient(rgba(0,0,0,${draftBackgroundDim}), rgba(0,0,0,${draftBackgroundDim})), url("${draftBackgroundImage.replace(/"/g, '\\"')}")`,
+                      backgroundImage: `linear-gradient(rgba(0,0,0,${draftBackgroundDim}), rgba(0,0,0,${draftBackgroundDim})), ${cssUrl(draftBackgroundImage)}`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       display: 'grid',

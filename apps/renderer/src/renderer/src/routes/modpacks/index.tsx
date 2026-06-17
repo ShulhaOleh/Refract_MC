@@ -281,12 +281,13 @@ function SortDropdown({ value, onChange }: { value: ModrinthSortIndex; onChange:
 
 // ─── ContentCard (tile) ───────────────────────────────────────────────────────
 
-function ContentCard({ project, tab, onInstall, onDetail, installing }: {
+function ContentCard({ project, tab, onInstall, onDetail, installing, installed }: {
   project: ModrinthProject
   tab: ContentTab
   onInstall: () => void
   onDetail: () => void
   installing: boolean
+  installed?: boolean
 }) {
   const t = useT()
   const [hovered, setHovered] = useState(false)
@@ -354,14 +355,14 @@ function ContentCard({ project, tab, onInstall, onDetail, installing }: {
         <Button
           variant="primary"
           onClick={e => { e.stopPropagation(); onInstall() }}
-          disabled={installing}
+          disabled={installing || installed}
           style={{
             fontSize: 14, fontWeight: 700,
             color: '#fff', background: 'var(--ender)',
             padding: '0 32px', height: 36, borderRadius: 'var(--radius-sm)', flexShrink: 0,
           }}
         >
-          {installing ? '…' : isModpack ? t.content.install : t.content.add}
+          {installing ? '…' : installed ? 'Installed' : isModpack ? t.content.install : t.content.add}
         </Button>
       </div>
     </div>
@@ -370,11 +371,12 @@ function ContentCard({ project, tab, onInstall, onDetail, installing }: {
 
 // ─── ContentDetailModal ───────────────────────────────────────────────────────
 
-function ContentDetailModal({ project, tab, onClose, onInstall }: {
+function ContentDetailModal({ project, tab, onClose, onInstall, installed }: {
   project: ModrinthProject
   tab: ContentTab
   onClose: () => void
   onInstall: () => void
+  installed?: boolean
 }) {
   useScrollLock()
   const t = useT()
@@ -568,9 +570,10 @@ function ContentDetailModal({ project, tab, onClose, onInstall }: {
               <Button
                 variant="primary"
                 onClick={onInstall}
+                disabled={installed}
                 style={{ width: '100%', height: 36, fontSize: 14, fontWeight: 700, color: '#fff', background: accent }}
               >
-                {btnLabel}
+                {installed ? 'Installed' : btnLabel}
               </Button>
             </div>
           </div>
@@ -644,6 +647,7 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
   const [loading, setLoading]      = useState(true)
   const [selectedInst, setSelInst] = useState<Instance | null>(null)
   const [selectedVer, setSelVer]   = useState<string | null>(null)
+  const [alreadyDownloaded, setAlreadyDownloaded] = useState(false)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -657,7 +661,30 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
       .catch(() => setLoading(false))
   }, [project.project_id])
 
-  const canInstall = selectedInst !== null && selectedVer !== null
+  useEffect(() => {
+    let cancelled = false
+    setAlreadyDownloaded(false)
+    if (!selectedInst || !selectedVer || tab === 'modpack') return
+
+    void (async () => {
+      try {
+        const { getPrimaryFile } = await import('@refract/core')
+        const filenames = new Set(versions.map(v => getPrimaryFile(v)?.filename).filter((name): name is string => !!name))
+        if (filenames.size === 0) return
+        const entries = await api.mods.list(selectedInst.id)
+        if (cancelled) return
+        setAlreadyDownloaded(entries.some(entry =>
+          entry.type === tab && (filenames.has(entry.filename) || (entry.filename.endsWith('.disabled') && filenames.has(entry.filename.slice(0, -'.disabled'.length)))),
+        ))
+      } catch {
+        if (!cancelled) setAlreadyDownloaded(false)
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [selectedInst, selectedVer, tab, versions])
+
+  const canInstall = selectedInst !== null && selectedVer !== null && !alreadyDownloaded
   const tabInfo    = TABS.find(t => t.type === tab)!
 
   return (
@@ -731,10 +758,10 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
         {/* Footer */}
         <div style={{ padding: '10px 18px', borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 12, color: 'var(--ink-4)' }}>
-            {!selectedInst ? t.content.pickInstance : !selectedVer ? t.content.pickVersion : t.content.installingTo(selectedInst.name)}
+            {!selectedInst ? t.content.pickInstance : !selectedVer ? t.content.pickVersion : alreadyDownloaded ? 'Already downloaded for this instance.' : t.content.installingTo(selectedInst.name)}
           </div>
           <Button variant="primary" disabled={!canInstall} onClick={() => canInstall && onInstall(selectedInst!.id, selectedVer!)} style={{ fontSize: 14, fontWeight: 700, padding: '0 24px', height: 34, borderRadius: 'var(--radius-sm)' }}>
-            {t.content.install}
+            {alreadyDownloaded ? 'Downloaded' : t.content.install}
           </Button>
         </div>
       </div>
@@ -748,9 +775,10 @@ interface ModpackInstallModalProps {
   project: ModrinthProject
   onClose: () => void
   onInstall: (name: string, versionId: string) => void
+  existingInstance?: Instance
 }
 
-function ModpackInstallModal({ project, onClose, onInstall }: ModpackInstallModalProps) {
+function ModpackInstallModal({ project, onClose, onInstall, existingInstance }: ModpackInstallModalProps) {
   useScrollLock()
   const t = useT()
   const [versions, setVersions]  = useState<ModrinthVersion[]>([])
@@ -777,7 +805,7 @@ function ModpackInstallModal({ project, onClose, onInstall }: ModpackInstallModa
   const ver        = versions.find(v => v.id === selectedVer)
   const mcVer      = ver?.game_versions[0]
   const loader     = ver?.loaders.find(l => l !== 'mrpack')
-  const canInstall = name.trim().length > 0 && selectedVer !== null
+  const canInstall = name.trim().length > 0 && selectedVer !== null && !existingInstance
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -846,13 +874,18 @@ function ModpackInstallModal({ project, onClose, onInstall }: ModpackInstallModa
               )}
             </div>
           )}
+          {existingInstance && (
+            <div style={{ padding: '8px 10px', background: 'var(--surface-2)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--ink-3)' }}>
+              Already installed as {existingInstance.name}.
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div style={{ padding: '12px 18px', borderTop: '1px solid var(--line)', display: 'flex', gap: 8 }}>
           <Button variant="secondary" onClick={onClose} style={{ flex: 1, height: 36, background: 'var(--surface-2)', color: 'var(--ink-3)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius-sm)', fontSize: 13 }}>{t.content.cancel}</Button>
           <Button variant="primary" disabled={!canInstall} onClick={() => canInstall && onInstall(name.trim(), selectedVer!)} style={{ flex: 2, height: 36, fontSize: 14, fontWeight: 700, color: '#fff', background: 'var(--ender)', borderRadius: 'var(--radius-sm)' }}>
-            {t.content.createInstance}
+            {existingInstance ? 'Installed' : t.content.createInstance}
           </Button>
         </div>
       </div>
@@ -930,6 +963,11 @@ function ContentBrowser() {
 
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tabInfo   = TABS.find(ti => ti.type === tab)!
+  const installedModrinthInstances = new Map(
+    instances
+      .filter(inst => inst.modpackSource === 'modrinth' && inst.modpackProjectId)
+      .map(inst => [inst.modpackProjectId!, inst]),
+  )
 
   useEffect(() => {
     api.instance.list().then(setInstances).catch(() => {})
@@ -1173,6 +1211,7 @@ function ContentBrowser() {
               project={project}
               tab={tab}
               installing={installingId === project.project_id}
+              installed={tab === 'modpack' && installedModrinthInstances.has(project.project_id)}
               onInstall={() => openInstall(project)}
               onDetail={() => setDetailTarget(project)}
             />
@@ -1204,6 +1243,7 @@ function ContentBrowser() {
           tab={tab}
           onClose={() => setDetailTarget(null)}
           onInstall={() => openInstall(detailTarget)}
+          installed={tab === 'modpack' && installedModrinthInstances.has(detailTarget.project_id)}
         />
       )}
 
@@ -1213,6 +1253,7 @@ function ContentBrowser() {
           project={installTarget}
           onClose={() => setTarget(null)}
           onInstall={handleModpackInstall}
+          existingInstance={installedModrinthInstances.get(installTarget.project_id)}
         />
       )}
       {installTarget && tab !== 'modpack' && (

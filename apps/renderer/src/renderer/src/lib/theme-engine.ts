@@ -1,6 +1,10 @@
 import type { ThemeDefinition, LayoutConfig } from './theme-types'
 import { DEFAULT_LAYOUT } from './theme-types'
 
+function cssUrl(value: string): string {
+  return `url(${JSON.stringify(value)})`
+}
+
 class ThemeEngine {
   private customStyleTag: HTMLStyleElement | null = null
 
@@ -71,7 +75,7 @@ class ThemeEngine {
       return
     }
 
-    root.style.setProperty('--theme-bg-image', `url("${theme.backgroundImage.replace(/"/g, '\\"')}")`)
+    root.style.setProperty('--theme-bg-image', cssUrl(theme.backgroundImage))
     root.style.setProperty('--theme-bg-opacity', String(theme.backgroundOpacity ?? 0.34))
     root.style.setProperty('--theme-bg-blur', `${theme.backgroundBlur ?? 0}px`)
     root.style.setProperty('--theme-bg-dim', String(theme.backgroundDim ?? 0.42))
