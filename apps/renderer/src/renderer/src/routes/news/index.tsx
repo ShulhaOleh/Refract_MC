@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useState } from 'react'
 import { ExternalLink, Newspaper, RefreshCw } from 'lucide-react'
 import { api } from '@/lib/api'
+import { useT } from '@/i18n'
 
 type NewsItem = Awaited<ReturnType<typeof api.news.list>>[number]
 
@@ -10,6 +11,7 @@ export const Route = createFileRoute('/news/')({
 })
 
 function MinecraftNewsPage() {
+  const t = useT()
   const [items, setItems] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +23,7 @@ function MinecraftNewsPage() {
       setItems(await api.news.list())
     } catch (err) {
       setItems([])
-      setError(err instanceof Error ? err.message : 'Failed to load news.')
+      setError(err instanceof Error ? err.message : t.news.loadFailed)
     } finally {
       setLoading(false)
     }
@@ -35,7 +37,7 @@ function MinecraftNewsPage() {
     try {
       await api.news.open(url)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to open article.')
+      setError(err instanceof Error ? err.message : t.news.openFailed)
     }
   }
 
@@ -43,10 +45,10 @@ function MinecraftNewsPage() {
     <div className="library-dashboard">
       <div className="library-hero">
         <div>
-          <div className="library-kicker">Minecraft</div>
-          <h1 className="library-title">News</h1>
+          <div className="library-kicker">{t.news.kicker}</div>
+          <h1 className="library-title">{t.news.title}</h1>
           <div className="library-subtitle">
-            Official headlines, summaries, and images from minecraft.net.
+            {t.news.subtitle}
           </div>
         </div>
         <button
@@ -66,7 +68,7 @@ function MinecraftNewsPage() {
           }}
         >
           <RefreshCw size={15} />
-          Refresh
+          {t.news.refresh}
         </button>
       </div>
 
@@ -78,11 +80,11 @@ function MinecraftNewsPage() {
 
       {loading && items.length === 0 ? (
         <div className="launcher-panel" style={{ padding: '32px 18px', textAlign: 'center', color: 'var(--ink-4)' }}>
-          Loading official Minecraft news...
+          {t.news.loading}
         </div>
       ) : items.length === 0 ? (
         <div className="launcher-panel" style={{ padding: '32px 18px', textAlign: 'center', color: 'var(--ink-4)' }}>
-          No news articles were found.
+          {t.news.empty}
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
@@ -136,9 +138,9 @@ function MinecraftNewsPage() {
                     }}
                   >
                     <ExternalLink size={14} />
-                    Read article
+                    {t.news.readArticle}
                   </button>
-                  <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>minecraft.net</span>
+                  <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>{t.news.source}</span>
                 </div>
               </div>
             </article>

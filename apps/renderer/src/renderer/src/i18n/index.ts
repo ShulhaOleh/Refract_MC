@@ -27,6 +27,7 @@ function build(l: Locale) {
       selectedCount: (n: number)    => i(l.home.selectedCount, { n }),
       bulkDeleteBody:(n: number)    => i(l.home.bulkDeleteBody, { n }),
       moveDesc:      (n: number)    => i(l.home.moveDesc, { n }),
+      modCount:      (n: number)    => i(l.home.modCount, { n }),
     },
 
     browse: {
@@ -45,6 +46,8 @@ function build(l: Locale) {
       addLabel:         (label: string)            => i(l.content.addLabel, { label: label.toUpperCase() }),
       searchPlaceholder:(label: string)            => i(l.content.searchPlaceholder, { label: label.toLowerCase() }),
     },
+
+    news: { ...l.news },
 
     settings: {
       ...l.settings,

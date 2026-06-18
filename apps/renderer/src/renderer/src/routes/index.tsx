@@ -157,13 +157,13 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
   const t = useT()
   const [dragOver, setDragOver] = useState(false)
   const [bannerHover, setBannerHover] = useState(false)
-  const label = isLaunching ? 'Launching...' : isRunning ? t.home.stop : instance.isInstalled ? t.home.play : t.home.install
+  const label = isLaunching ? t.home.launching : isRunning ? t.home.stop : instance.isInstalled ? t.home.play : t.home.install
   const statusChips: Array<{ label: string; tone?: 'neutral' | 'good' | 'warn' | 'info' }> = []
-  if (isLaunching) statusChips.push({ label: 'Launching', tone: 'info' })
-  else if (isRunning) statusChips.push({ label: 'Running', tone: 'good' })
-  if (instance.isInstalled && updateAvailable) statusChips.push({ label: 'Update', tone: 'good' })
-  if (instance.isInstalled && updateCount > 0) statusChips.push({ label: `${updateCount} mod${updateCount === 1 ? '' : 's'}`, tone: 'warn' })
-  if (instance.isInstalled && !javaOk) statusChips.push({ label: 'Missing Java', tone: 'warn' })
+  if (isLaunching) statusChips.push({ label: t.home.launching, tone: 'info' })
+  else if (isRunning) statusChips.push({ label: t.home.running, tone: 'good' })
+  if (instance.isInstalled && updateAvailable) statusChips.push({ label: t.home.update, tone: 'good' })
+  if (instance.isInstalled && updateCount > 0) statusChips.push({ label: t.home.modCount(updateCount), tone: 'warn' })
+  if (instance.isInstalled && !javaOk) statusChips.push({ label: t.home.missingJava, tone: 'warn' })
   if (instance.isInstalled && blockReason === 'no-profile') statusChips.push({ label: 'No account', tone: 'warn' })
   if (instance.isInstalled && blockReason === 'no-license') statusChips.push({ label: 'License needed', tone: 'warn' })
   if (statusChips.length === 0) {
@@ -631,7 +631,7 @@ function NoLicenseModal({ instanceName, onClose }: { instanceName: string; onClo
           </p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
-              onClick={() => window.open('https://www.minecraft.net/en-us/get-minecraft')}
+              onClick={() => { void api.external.open('https://www.minecraft.net/en-us/get-minecraft') }}
               style={primaryBtnStyle}
             >
               {t.home.buyMinecraft}
@@ -1216,7 +1216,7 @@ function Library() {
           <div className="library-kicker">{greeting(t)}</div>
           <div className="library-title">
             <span>Ready for</span>
-            <strong>{activeAccount?.username ?? 'Guest'}</strong>
+            <strong>{activeAccount?.username ?? t.sidebar.guest}</strong>
           </div>
           <div className="library-status" style={{ color: hasProfile && canPlayMinecraft ? 'var(--grass)' : 'var(--gold)' }}>
             {hasProfile && canPlayMinecraft

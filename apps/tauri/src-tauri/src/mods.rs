@@ -6,11 +6,34 @@
 
 use crate::{instances, net};
 use base64::Engine as _;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha512};
+use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant, SystemTime};
+
+/// Cache of jar sha512 hashes keyed by path → (mtime, size, hash). Hashing every
+/// jar on each check is the dominant cost; a file is only re-hashed when its mtime
+/// or size changes.
+static HASH_CACHE: LazyLock<Mutex<HashMap<PathBuf, (SystemTime, u64, String)>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Cache of the last update-check result per instance → (computed_at, dir signature,
+/// results). The signature (a hash of every jar's name/size/mtime) auto-invalidates
+/// the moment any jar is added, updated or removed; the TTL bounds how stale a
+/// result can be when nothing changed locally but a newer version shipped on
+/// Modrinth. Together they let the home screen, browser and mods dialog share one
+/// deterministic result instead of each re-hashing and re-hitting Modrinth.
+static UPDATE_CACHE: LazyLock<Mutex<HashMap<String, (Instant, u64, Vec<ModUpdateEntry>)>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+const UPDATE_TTL: Duration = Duration::from_secs(300);
 
 /// Game dir for an instance: its external dir if set, else <instance>/minecraft.
 fn game_dir(instance_id: &str) -> PathBuf {
@@ -318,6 +341,7 @@ pub async fn install_content_file(
     url: String,
     file_name: String,
     content_type: String,
+    r#mod: Option<Value>,
     sha512: Option<String>,
     sha1: Option<String>,
 ) -> Result<String, String> {
@@ -334,6 +358,38 @@ pub async fn install_content_file(
         .to_string();
     let dest = dir.join(&safe);
     let disabled = dir.join(format!("{safe}.disabled"));
+    let project_id = r#mod
+        .as_ref()
+        .and_then(|m| m.get("projectId"))
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+
+    if !project_id.is_empty() {
+        if let Some(inst) = instances::get_instance_by_id(instance_id.clone()) {
+            if let Some(old) = inst
+                .get("mods")
+                .and_then(Value::as_array)
+                .and_then(|mods| {
+                    mods.iter().find(|m| {
+                        m.get("projectId").and_then(Value::as_str) == Some(project_id.as_str())
+                            && m.get("contentType").and_then(Value::as_str) == Some(content_type.as_str())
+                    })
+                })
+                .and_then(|m| m.get("fileName"))
+                .and_then(Value::as_str)
+            {
+                let old_safe = Path::new(old)
+                    .file_name()
+                    .map(|name| name.to_string_lossy().to_string());
+                if let Some(old_safe) = old_safe {
+                    let _ = fs::remove_file(dir.join(&old_safe));
+                    let _ = fs::remove_file(dir.join(format!("{old_safe}.disabled")));
+                }
+            }
+        }
+    }
+
     if dest.exists() || disabled.exists() {
         return Err(format!("{safe} is already downloaded for this instance."));
     }
@@ -346,7 +402,336 @@ pub async fn install_content_file(
         sha1.as_deref(),
     )
     .await?;
+
+    if let Some(mod_record) = r#mod {
+        if !project_id.is_empty() {
+            let inst = instances::get_instance_by_id(instance_id.clone()).ok_or("instance not found")?;
+            let mut mods: Vec<Value> = inst
+                .get("mods")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            mods.retain(|m| {
+                !(m.get("projectId").and_then(Value::as_str) == Some(project_id.as_str())
+                    && m.get("contentType").and_then(Value::as_str) == Some(content_type.as_str()))
+            });
+            mods.insert(0, mod_record);
+            instances::update_instance(instance_id, json!({ "mods": mods }))?;
+        }
+    }
     Ok(safe)
+}
+
+#[derive(Serialize, Clone)]
+pub struct ModUpdateEntry {
+    filename: String,
+    #[serde(rename = "projectId")]
+    project_id: String,
+    #[serde(rename = "latestVersionId")]
+    latest_version_id: String,
+    #[serde(rename = "latestVersionName")]
+    latest_version_name: String,
+    #[serde(rename = "latestFilename")]
+    latest_filename: String,
+    #[serde(rename = "downloadUrl")]
+    download_url: String,
+    #[serde(rename = "hasUpdate")]
+    has_update: bool,
+}
+
+#[derive(Deserialize)]
+pub struct ApplyModUpdate {
+    filename: String,
+    #[serde(rename = "downloadUrl")]
+    download_url: String,
+    #[serde(rename = "newFilename")]
+    new_filename: String,
+}
+
+#[derive(Serialize)]
+pub struct ApplyModUpdateResult {
+    filename: String,
+    success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+fn sha512_file(path: &Path) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|e| e.to_string())?;
+    Ok(hex::encode(Sha512::digest(bytes)))
+}
+
+/// sha512 of a jar, reusing the cached value when the file's mtime and size are
+/// unchanged since it was last hashed.
+fn sha512_file_cached(path: &Path, meta: &fs::Metadata) -> Result<String, String> {
+    let mtime = meta.modified().map_err(|e| e.to_string())?;
+    let size = meta.len();
+    if let Ok(cache) = HASH_CACHE.lock() {
+        if let Some((m, s, h)) = cache.get(path) {
+            if *m == mtime && *s == size {
+                return Ok(h.clone());
+            }
+        }
+    }
+    let hash = sha512_file(path)?;
+    if let Ok(mut cache) = HASH_CACHE.lock() {
+        cache.insert(path.to_path_buf(), (mtime, size, hash.clone()));
+    }
+    Ok(hash)
+}
+
+#[tauri::command]
+pub async fn check_mod_updates(
+    instance_id: String,
+    force: Option<bool>,
+) -> Result<Vec<ModUpdateEntry>, String> {
+    let instance = instances::get_instance_by_id(instance_id.clone()).ok_or("instance not found")?;
+    let mods_dir = game_dir(&instance_id).join("mods");
+    if !mods_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    // Enumerate the enabled jars and fold their (name, size, mtime) into a cheap
+    // directory signature — no file reads, so this is fast even with many mods.
+    let mut entries: Vec<(String, PathBuf)> = Vec::new();
+    let mut sig_parts: Vec<(String, u64, u64)> = Vec::new();
+    for entry in fs::read_dir(&mods_dir).map_err(|e| e.to_string())?.flatten() {
+        let filename = entry.file_name().to_string_lossy().to_string();
+        if !filename.ends_with(".jar") || filename.ends_with(".disabled") {
+            continue;
+        }
+        let path = entry.path();
+        let Ok(meta) = entry.metadata() else { continue };
+        if !meta.is_file() {
+            continue;
+        }
+        let size = meta.len();
+        let mtime = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        sig_parts.push((filename.clone(), size, mtime));
+        entries.push((filename, path));
+    }
+    if entries.is_empty() {
+        return Ok(Vec::new());
+    }
+    sig_parts.sort();
+    let signature = {
+        let mut h = DefaultHasher::new();
+        sig_parts.hash(&mut h);
+        h.finish()
+    };
+
+    // Serve a fresh-enough cached result (unless the caller forces a refresh) so the
+    // home screen, browser and mods dialog don't each re-hash and re-hit Modrinth.
+    if !force.unwrap_or(false) {
+        if let Ok(cache) = UPDATE_CACHE.lock() {
+            if let Some((at, sig, results)) = cache.get(&instance_id) {
+                if *sig == signature && at.elapsed() < UPDATE_TTL {
+                    return Ok(results.clone());
+                }
+            }
+        }
+    }
+
+    // Hash the jars off the async runtime — reusing cached hashes for unchanged files.
+    let valid: Vec<(String, String)> = tauri::async_runtime::spawn_blocking(move || {
+        let mut out: Vec<(String, String)> = Vec::new();
+        for (filename, path) in entries {
+            if let Ok(meta) = fs::metadata(&path) {
+                if let Ok(hash) = sha512_file_cached(&path, &meta) {
+                    out.push((filename, hash));
+                }
+            }
+        }
+        out
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    if valid.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let hashes: Vec<String> = valid.iter().map(|(_, hash)| hash.clone()).collect();
+    let hash_to_file: HashMap<String, String> = valid
+        .into_iter()
+        .map(|(filename, hash)| (hash, filename))
+        .collect();
+    let loader = instance
+        .get("modLoader")
+        .and_then(Value::as_str)
+        .map(|s| vec![s.to_string()]);
+    let game_version = instance
+        .get("minecraftVersion")
+        .and_then(Value::as_str)
+        .ok_or("instance has no Minecraft version")?
+        .to_string();
+
+    let client = reqwest::Client::new();
+
+    // 1. Resolve EVERY installed jar to its current Modrinth version. Unlike the
+    //    update endpoint, `version_files` has no loader / game-version filter, so it
+    //    matches any Modrinth-known jar — including mods already at the latest
+    //    version or built for a slightly different MC version. This is what lets the
+    //    browser mark *all* installed mods, not just the ones with a pending update.
+    let known_body = json!({ "hashes": hashes.clone(), "algorithm": "sha512" });
+    let known_res = client
+        .post("https://api.modrinth.com/v2/version_files")
+        .header("accept", "application/json")
+        .json(&known_body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    net::validate_url(known_res.url().as_str(), net::MODRINTH_HOSTS)?;
+    if !known_res.status().is_success() {
+        return Err(format!(
+            "HTTP {} from Modrinth version lookup",
+            known_res.status()
+        ));
+    }
+    let known_map: HashMap<String, Value> = known_res.json().await.map_err(|e| e.to_string())?;
+
+    // 2. Ask which of those have a newer version for this instance's loader + MC version.
+    let update_body = json!({
+        "hashes": hashes,
+        "algorithm": "sha512",
+        "loaders": loader,
+        "game_versions": [game_version],
+    });
+    let update_res = client
+        .post("https://api.modrinth.com/v2/version_files/update")
+        .header("accept", "application/json")
+        .json(&update_body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    net::validate_url(update_res.url().as_str(), net::MODRINTH_HOSTS)?;
+    if !update_res.status().is_success() {
+        return Err(format!(
+            "HTTP {} from Modrinth update check",
+            update_res.status()
+        ));
+    }
+    let update_map: HashMap<String, Value> = update_res.json().await.map_err(|e| e.to_string())?;
+
+    // The primary download file of a version (the one flagged primary, else the first).
+    fn primary_file(version: &Value) -> Option<&Value> {
+        let files = version.get("files").and_then(Value::as_array)?;
+        files
+            .iter()
+            .find(|f| f.get("primary").and_then(Value::as_bool).unwrap_or(false))
+            .or_else(|| files.first())
+    }
+
+    // Emit an entry for every installed jar Modrinth recognises. When an update is
+    // available we surface the latest version's download info; otherwise we fall back
+    // to the installed version itself so the mod still counts as "downloaded".
+    let mut out = Vec::new();
+    for (input_hash, current_version) in &known_map {
+        let Some(filename) = hash_to_file.get(input_hash).cloned() else {
+            continue;
+        };
+        let latest_version = update_map.get(input_hash).unwrap_or(current_version);
+        let Some(file) = primary_file(latest_version) else {
+            continue;
+        };
+        let Some(latest_hash) = file
+            .get("hashes")
+            .and_then(|h| h.get("sha512"))
+            .and_then(Value::as_str)
+        else {
+            continue;
+        };
+        let Some(download_url) = file.get("url").and_then(Value::as_str) else {
+            continue;
+        };
+        net::validate_url(download_url, net::MODRINTH_HOSTS)?;
+        out.push(ModUpdateEntry {
+            filename,
+            project_id: current_version
+                .get("project_id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            latest_version_id: latest_version
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            latest_version_name: latest_version
+                .get("version_number")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            latest_filename: file
+                .get("filename")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            download_url: download_url.to_string(),
+            has_update: !latest_hash.eq_ignore_ascii_case(input_hash),
+        });
+    }
+
+    if let Ok(mut cache) = UPDATE_CACHE.lock() {
+        cache.insert(instance_id.clone(), (Instant::now(), signature, out.clone()));
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+pub async fn apply_mod_updates(
+    instance_id: String,
+    updates: Vec<ApplyModUpdate>,
+) -> Result<Vec<ApplyModUpdateResult>, String> {
+    let mods_dir = game_dir(&instance_id).join("mods");
+    let mut results = Vec::new();
+    for update in updates {
+        let result = async {
+            let new_name = Path::new(&update.new_filename)
+                .file_name()
+                .ok_or("invalid new filename")?
+                .to_string_lossy()
+                .to_string();
+            let old_name = Path::new(&update.filename)
+                .file_name()
+                .ok_or("invalid filename")?
+                .to_string_lossy()
+                .to_string();
+            net::download_to(
+                &reqwest::Client::new(),
+                &update.download_url,
+                &mods_dir.join(&new_name),
+                net::MODRINTH_HOSTS,
+                None,
+            )
+            .await?;
+            let old_path = mods_dir.join(&old_name);
+            let new_path = mods_dir.join(&new_name);
+            if old_path.exists() && old_path != new_path {
+                fs::remove_file(old_path).map_err(|e| e.to_string())?;
+            }
+            Ok::<(), String>(())
+        }
+        .await;
+
+        match result {
+            Ok(()) => results.push(ApplyModUpdateResult {
+                filename: update.filename,
+                success: true,
+                error: None,
+            }),
+            Err(error) => results.push(ApplyModUpdateResult {
+                filename: update.filename,
+                success: false,
+                error: Some(error),
+            }),
+        }
+    }
+    Ok(results)
 }
 
 // ── mod profiles (saved enabled-mod sets) ────────────────────────────────────

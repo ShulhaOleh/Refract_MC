@@ -22,8 +22,8 @@ fn defaults() -> Value {
         "windowBounds": { "width": 1280, "height": 800 },
         "defaultMemoryMb": 2048,
         "onboardingDone": false,
-        "analyticsEnabled": false,
-        "analyticsNoticeShown": true,
+        "analyticsEnabled": true,
+        "analyticsNoticeShown": false,
         "accounts": []
     })
 }
@@ -62,10 +62,6 @@ pub fn config_get() -> Result<Value, String> {
         save(&cfg)?; // config.ts writes defaults out on first load
     }
     if let Some(map) = cfg.as_object_mut() {
-        // Tauri analytics is intentionally disabled until telemetry secret
-        // injection and privacy behavior are ported for this runtime.
-        map.insert("analyticsEnabled".into(), json!(false));
-        map.insert("analyticsNoticeShown".into(), json!(true));
         map.insert("systemRamGb".into(), json!(system::ram_gb_value()));
     }
     Ok(cfg)
@@ -98,13 +94,7 @@ pub fn config_set(key: String, value: Value) -> Result<Value, String> {
         .as_object_mut()
         .ok_or_else(|| "config root is not an object".to_string())?;
     let _: &mut Map<String, Value> = map;
-    if key == "analyticsEnabled" {
-        map.insert(key, json!(false));
-    } else if key == "analyticsNoticeShown" {
-        map.insert(key, json!(true));
-    } else {
-        map.insert(key, value);
-    }
+    map.insert(key, value);
     save(&cfg)?;
     Ok(cfg)
 }

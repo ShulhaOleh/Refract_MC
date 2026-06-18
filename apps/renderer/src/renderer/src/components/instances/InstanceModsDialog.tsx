@@ -150,11 +150,11 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
     finally { setLoading(false) }
   }, [instance])
 
-  const loadUpdates = useCallback(async () => {
+  const loadUpdates = useCallback(async (force = false) => {
     if (!instance) return
     setLoading(true)
     setError(null)
-    try { setModUpdates(await api.modrinth.checkModUpdates(instance.id)) }
+    try { setModUpdates(await api.modrinth.checkModUpdates(instance.id, force)) }
     catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     finally { setLoading(false) }
   }, [instance])
@@ -466,7 +466,7 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
                       instance.id,
                       updatesAvailable.map(u => ({ filename: u.filename, downloadUrl: u.downloadUrl, newFilename: u.latestFilename }))
                     )
-                    await loadUpdates()
+                    await loadUpdates(true)
                     onUpdateApplied?.(instance.id)
                   } catch { /* ignore */ } finally {
                     setUpdatingAll(false)
@@ -492,7 +492,7 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
             <Button
               variant="secondary"
               size="sm"
-              onClick={tab === 'worlds' ? loadWorlds : tab === 'screenshots' ? loadScreenshots : tab === 'updates' ? loadUpdates : tab === 'servers' ? loadServers : load}
+              onClick={tab === 'worlds' ? loadWorlds : tab === 'screenshots' ? loadScreenshots : tab === 'updates' ? () => loadUpdates(true) : tab === 'servers' ? loadServers : load}
               style={{ fontSize: 11 }}
             >
               {td.refresh}

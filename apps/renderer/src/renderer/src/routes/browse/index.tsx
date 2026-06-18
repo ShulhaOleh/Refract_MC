@@ -634,7 +634,7 @@ function ModDetailModal({ mod, onClose, onInstall }: {
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
             <Button
               variant="outline"
-              onClick={() => window.open(modrinthUrl)}
+              onClick={() => { void api.external.open(modrinthUrl) }}
               style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--accent)', border: '1px solid var(--accent)' }}
             >
               {t.browse.modrinth}
@@ -723,17 +723,17 @@ function ModDetailModal({ mod, onClose, onInstall }: {
                 <SideLabel>{t.browse.links}</SideLabel>
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {detail.issues_url && (
-                    <Button variant="ghost" onClick={() => window.open(detail.issues_url!)} style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>
+                    <Button variant="ghost" onClick={() => { void api.external.open(detail.issues_url!) }} style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>
                       🐛 Issues ↗
                     </Button>
                   )}
                   {detail.source_url && (
-                    <Button variant="ghost" onClick={() => window.open(detail.source_url!)} style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>
+                    <Button variant="ghost" onClick={() => { void api.external.open(detail.source_url!) }} style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>
                       {'</>'} Source ↗
                     </Button>
                   )}
                   {detail.discord_url && (
-                    <Button variant="ghost" onClick={() => window.open(detail.discord_url!)} style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>
+                    <Button variant="ghost" onClick={() => { void api.external.open(detail.discord_url!) }} style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>
                       💬 Discord ↗
                     </Button>
                   )}
@@ -876,7 +876,13 @@ function Browse() {
     } catch { /* ignore */ }
   }, [gameVersion, loader])
 
-  // When instance changes: apply filters, scan actual mod files via checkModUpdates
+  function savedModProjectIds(instance: Instance | null): Set<string> {
+    return new Set((instance?.mods ?? [])
+      .filter(m => !m.projectId.startsWith('cf:') && (!m.contentType || m.contentType === 'mod'))
+      .map(m => m.projectId))
+  }
+
+  // When instance changes: apply filters, then layer update scan results over the saved install records.
   useEffect(() => {
     if (!activeInstance) {
       setDownloadedIds(new Set())
@@ -887,14 +893,31 @@ function Browse() {
     setLoader(activeInstance.modLoader ? activeInstance.modLoader.toLowerCase() : 'All')
     setOffset(0)
 
-    // checkModUpdates reads every .jar in the mods folder and resolves their Modrinth project IDs
+    const savedIds = savedModProjectIds(activeInstance)
+    setDownloadedIds(savedIds)
+    setUpdateIds(new Set())
+
+    // checkModUpdates mirrors Electron: it scans jars and asks Modrinth which ones have newer versions.
     api.modrinth.checkModUpdates(activeInstance.id)
       .then(results => {
-        setDownloadedIds(new Set(results.map(r => r.projectId)))
+        setDownloadedIds(new Set([...savedIds, ...results.map(r => r.projectId)]))
         setUpdateIds(new Set(results.filter(r => r.hasUpdate).map(r => r.projectId)))
       })
-      .catch(() => { setDownloadedIds(new Set()); setUpdateIds(new Set()) })
-  }, [activeInstance?.id])
+      .catch(() => { setDownloadedIds(savedIds); setUpdateIds(new Set()) })
+  }, [activeInstance?.id, activeInstance?.mods])
+
+  async function refreshActiveModStatus(instanceId: string, instanceSnapshot: Instance | null = activeInstance) {
+    const savedIds = savedModProjectIds(instanceSnapshot)
+    setDownloadedIds(savedIds)
+    try {
+      const results = await api.modrinth.checkModUpdates(instanceId)
+      setDownloadedIds(new Set([...savedIds, ...results.map(r => r.projectId)]))
+      setUpdateIds(new Set(results.filter(r => r.hasUpdate).map(r => r.projectId)))
+    } catch {
+      setDownloadedIds(savedIds)
+      setUpdateIds(new Set())
+    }
+  }
 
   function getModStatus(mod: ModrinthProject): 'downloaded' | 'update' | 'incompatible' | null {
     if (!activeInstance) return null
@@ -958,7 +981,15 @@ function Browse() {
     try {
       await run()
       showToast(`${name} installed successfully!`, true)
-      api.instance.list().then(setInstances).catch(() => {})
+      const nextInstances = await api.instance.list().catch(() => null)
+      if (nextInstances) {
+        setInstances(nextInstances)
+        if (activeInstance) {
+          const nextActive = nextInstances.find(i => i.id === activeInstance.id) ?? activeInstance
+          setActiveInstance(nextActive)
+          await refreshActiveModStatus(activeInstance.id, nextActive)
+        }
+      }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Install failed', false)
     } finally {
@@ -1012,7 +1043,15 @@ function Browse() {
       await install()
       const n = toInstall.length
       showToast(n > 0 ? `${mainName} + ${n} dependenc${n > 1 ? 'ies' : 'y'} installed!` : `${mainName} installed successfully!`, true)
-      api.instance.list().then(setInstances).catch(() => {})
+      const nextInstances = await api.instance.list().catch(() => null)
+      if (nextInstances) {
+        setInstances(nextInstances)
+        if (activeInstance) {
+          const nextActive = nextInstances.find(i => i.id === activeInstance.id) ?? activeInstance
+          setActiveInstance(nextActive)
+          await refreshActiveModStatus(activeInstance.id, nextActive)
+        }
+      }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Install failed', false)
     } finally {
@@ -1653,7 +1692,7 @@ function CFModDetailModal({ mod, onClose, onInstall }: { mod: CFProject; onClose
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
-            <Button variant="outline" onClick={() => window.open(cfUrl)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--ender)', border: '1px solid var(--ender)' }}>CurseForge ↗</Button>
+            <Button variant="outline" onClick={() => { void api.external.open(cfUrl) }} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--ender)', border: '1px solid var(--ender)' }}>CurseForge ↗</Button>
             <Button variant="ghost" size="icon" onClick={onClose} style={{ color: 'var(--ink-4)', fontSize: 20, lineHeight: 1 }}>&#x2715;</Button>
           </div>
         </div>
@@ -1688,9 +1727,9 @@ function CFModDetailModal({ mod, onClose, onInstall }: { mod: CFProject; onClose
               <div>
                 <SideLabel>{t.browse.links}</SideLabel>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
-                  {mod.links.websiteUrl && <Button variant="ghost" onClick={() => window.open(mod.links.websiteUrl!)} style={{ fontSize: 11, color: 'var(--ender)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>CurseForge ↗</Button>}
-                  {mod.links.issuesUrl  && <Button variant="ghost" onClick={() => window.open(mod.links.issuesUrl!)}  style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>Issues ↗</Button>}
-                  {mod.links.sourceUrl  && <Button variant="ghost" onClick={() => window.open(mod.links.sourceUrl!)}  style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>Source ↗</Button>}
+                  {mod.links.websiteUrl && <Button variant="ghost" onClick={() => { void api.external.open(mod.links.websiteUrl!) }} style={{ fontSize: 11, color: 'var(--ender)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>CurseForge ↗</Button>}
+                  {mod.links.issuesUrl  && <Button variant="ghost" onClick={() => { void api.external.open(mod.links.issuesUrl!) }}  style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>Issues ↗</Button>}
+                  {mod.links.sourceUrl  && <Button variant="ghost" onClick={() => { void api.external.open(mod.links.sourceUrl!) }}  style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'left', padding: 0, justifyContent: 'flex-start' }}>Source ↗</Button>}
                 </div>
               </div>
             )}

@@ -1,3 +1,4 @@
+mod analytics;
 mod auth;
 mod config;
 mod content;
@@ -9,6 +10,7 @@ mod gamedata;
 mod instances;
 mod java;
 mod launch;
+mod links;
 mod log;
 mod mc_install;
 mod modpack;
@@ -28,7 +30,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .setup(|_app| {
+            analytics::init();
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
+            analytics::analytics_track,
             config::config_get,
             config::config_set,
             system::system_ram_gb,
@@ -83,12 +90,15 @@ pub fn run() {
             news::minecraft_news,
             news::open_minecraft_news_article,
             news::open_discord_invite,
+            links::open_external_link,
             mods::mods_list,
             mods::mods_toggle,
             mods::mods_delete,
             mods::mods_install_local,
             mods::install_mod_file,
             mods::install_content_file,
+            mods::check_mod_updates,
+            mods::apply_mod_updates,
             mods::uninstall_mod,
             mods::mods_profiles_list,
             mods::mods_profiles_save,

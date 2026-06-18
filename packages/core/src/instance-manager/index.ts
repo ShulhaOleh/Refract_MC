@@ -9,6 +9,7 @@ export interface InstalledMod {
   loader: string
   gameVersion: string
   installedAt: string
+  contentType?: 'mod' | 'resourcepack' | 'shader' | 'datapack'
 }
 
 export interface Instance {

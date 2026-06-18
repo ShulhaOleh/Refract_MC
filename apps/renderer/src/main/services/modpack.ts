@@ -9,7 +9,7 @@ import { getProjectVersions, getPrimaryFile, fetchVersionList } from '@refract/c
 import { getFtbModpack, getFtbVersion, ftbTargets, ftbIconUrl } from '@refract/core'
 import { createAndSaveInstance, updateInstance, deleteInstance, resolveInstanceDir, getInstanceById } from './instance-store'
 import { installMinecraft } from './minecraft/downloader'
-import type { Instance } from '@refract/core'
+import type { Instance, InstalledMod } from '@refract/core'
 
 interface MrpackFile {
   path: string
@@ -671,5 +671,27 @@ export async function installContentPack(
   if (relative(destFolder, destPath).startsWith('..')) throw new Error(`Unsafe filename: ${file.filename}`)
 
   mkdirSync(destFolder, { recursive: true })
+
+  const existing = instance.mods?.find(m => m.projectId === projectId && m.contentType === contentType)
+  if (existing?.fileName) {
+    const oldName = basename(existing.fileName)
+    try { rmSync(join(destFolder, oldName), { force: true }) } catch { /* ignore */ }
+    try { rmSync(join(destFolder, `${oldName}.disabled`), { force: true }) } catch { /* ignore */ }
+  }
+
   await downloadFile(file.url, destPath)
+
+  const mod: InstalledMod = {
+    projectId,
+    versionId: target.id,
+    name: projectName,
+    fileName: safeName,
+    fileSize: file.size,
+    loader: target.loaders[0] ?? 'unknown',
+    gameVersion: target.game_versions[0] ?? instance.minecraftVersion,
+    installedAt: new Date().toISOString(),
+    contentType,
+  }
+  const mods = [mod, ...(instance.mods ?? []).filter(m => !(m.projectId === projectId && m.contentType === contentType))]
+  updateInstance(instanceId, { mods })
 }

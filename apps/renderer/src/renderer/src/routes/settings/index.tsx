@@ -507,9 +507,11 @@ function Settings() {
                   </div>
                   <div style={{ color:'var(--ink-3)', fontSize:12, marginTop:3 }}>
                     {activeAccount
-                      ? activeAccount.canPlayMinecraft
+                      ? activeAccount.type === 'microsoft'
                         ? t.settings.licenseVerified
-                        : t.settings.offlineProfile
+                        : activeAccount.type === 'yggdrasil'
+                          ? t.settings.yggdrasilProfile
+                          : t.settings.offlineProfile
                       : t.settings.noProfileCreate}
                   </div>
                   {activeAccount && (
@@ -548,8 +550,8 @@ function Settings() {
                         <div style={{ color:'var(--ink)', fontWeight:700, fontSize:13, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                           {account.username}
                         </div>
-                        <div style={{ color:account.canPlayMinecraft ? 'var(--diamond)' : 'var(--gold)', fontSize:11, marginTop:2 }}>
-                          {account.canPlayMinecraft ? t.settings.microsoftLicensed : t.settings.offlinePlay}
+                        <div style={{ color:account.type === 'microsoft' ? 'var(--diamond)' : account.type === 'yggdrasil' ? 'var(--ender)' : 'var(--gold)', fontSize:11, marginTop:2 }}>
+                          {account.type === 'microsoft' ? t.settings.microsoftLicensed : account.type === 'yggdrasil' ? t.settings.yggdrasilPlay : t.settings.offlinePlay}
                         </div>
                       </div>
                       {isActive && (
@@ -864,14 +866,14 @@ function Settings() {
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => window.open('https://github.com/RefractMC/Refract_MC/issues')}
+                onClick={() => { void api.external.open('https://github.com/RefractMC/Refract_MC/issues') }}
                 style={{ height:30 }}
               >
                 {t.settings.reportBug}
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => window.open('https://github.com/RefractMC/Refract_MC')}
+                onClick={() => { void api.external.open('https://github.com/RefractMC/Refract_MC') }}
                 style={{ height:30 }}
               >
                 {t.settings.github}

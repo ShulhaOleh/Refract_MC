@@ -15,6 +15,7 @@ export const Route = createFileRoute('/modpacks/')({ component: ContentBrowser }
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 type ContentTab = ModrinthProjectType & ('modpack' | 'resourcepack' | 'shader' | 'datapack')
+type ContentStatus = 'installed' | 'update' | null
 
 const TABS: Array<{ type: ContentTab; label: string; showLoader: boolean }> = [
   { type: 'modpack',     label: 'Modpacks',      showLoader: true  },
@@ -279,15 +280,83 @@ function SortDropdown({ value, onChange }: { value: ModrinthSortIndex; onChange:
   )
 }
 
+function InstanceDropdown({ instances, value, onChange }: {
+  instances: Instance[]
+  value: Instance | null
+  onChange: (inst: Instance | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
+  }, [])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <Button variant={value ? 'outline' : 'secondary'} onClick={() => setOpen(o => !o)} style={{
+        gap: 6,
+        fontSize: 12,
+        color: value ? 'var(--ink)' : 'var(--ink-4)',
+        background: value ? 'var(--accent-tint)' : 'var(--surface)',
+        border: `1px solid ${value ? 'var(--accent)' : 'var(--border-r)'}`,
+        borderRadius: 'var(--radius-sm)', padding: '4px 10px', whiteSpace: 'nowrap',
+      }}>
+        {value
+          ? <><span style={{ color: 'var(--ink-4)', fontSize: 10, fontWeight: 400 }}>instance:</span> {value.name}</>
+          : 'Check against instance...'}
+        <span style={{ fontSize: 9, opacity: .7 }}>{open ? '▲' : '▼'}</span>
+      </Button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 40,
+          background: 'var(--surface)', border: '1px solid var(--border-r)',
+          borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-raised)',
+          minWidth: 220, maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column',
+        }}>
+          <Button variant="ghost" onClick={() => { onChange(null); setOpen(false) }} style={{
+            width: '100%', justifyContent: 'flex-start',
+            padding: '8px 14px', textAlign: 'left', borderRadius: 0, borderBottom: '1px solid var(--line)',
+            fontSize: 12, fontWeight: 500, color: !value ? 'var(--accent)' : 'var(--ink-3)',
+            background: !value ? 'var(--accent-tint)' : 'transparent',
+          }}>
+            None (show all)
+          </Button>
+          {instances.map(inst => (
+            <Button variant="ghost" key={inst.id} onClick={() => { onChange(inst); setOpen(false) }} style={{
+              width: '100%', justifyContent: 'flex-start',
+              padding: '8px 14px', textAlign: 'left', borderRadius: 0,
+              fontSize: 12, fontWeight: 500,
+              color: value?.id === inst.id ? 'var(--accent)' : 'var(--ink-2)',
+              background: value?.id === inst.id ? 'var(--accent-tint)' : 'transparent',
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2,
+            }}>
+              <span>{inst.name}</span>
+              <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', letterSpacing: '.04em' }}>
+                MC {inst.minecraftVersion} · {inst.modLoader?.toUpperCase() ?? 'VANILLA'}
+              </span>
+            </Button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── ContentCard (tile) ───────────────────────────────────────────────────────
 
-function ContentCard({ project, tab, onInstall, onDetail, installing, installed }: {
+function ContentCard({ project, tab, onInstall, onDetail, installing, installed, status }: {
   project: ModrinthProject
   tab: ContentTab
   onInstall: () => void
   onDetail: () => void
   installing: boolean
   installed?: boolean
+  status?: ContentStatus
 }) {
   const t = useT()
   const [hovered, setHovered] = useState(false)
@@ -295,6 +364,8 @@ function ContentCard({ project, tab, onInstall, onDetail, installing, installed 
   const isModpack = tab === 'modpack'
   const accent = tabColor(tab)
   const tabInfo = TABS.find(t => t.type === tab)!
+  const isInstalled = installed || status === 'installed'
+  const hasUpdate = status === 'update'
 
   return (
     <div
@@ -353,30 +424,37 @@ function ContentCard({ project, tab, onInstall, onDetail, installing, installed 
           {project.categories.slice(0, 2).map(cat => <Tag key={cat} color="var(--ink-4)">{cat}</Tag>)}
         </div>
         <Button
-          variant="primary"
+          variant={isInstalled ? 'outline' : 'primary'}
           onClick={e => { e.stopPropagation(); onInstall() }}
-          disabled={installing || installed}
+          disabled={installing || isInstalled}
           style={{
             fontSize: 14, fontWeight: 700,
-            color: '#fff', background: 'var(--ender)',
+            color: isInstalled ? 'var(--grass)' : '#fff',
+            background: isInstalled ? 'transparent' : hasUpdate ? 'var(--gold)' : 'var(--ender)',
+            border: isInstalled ? '1px solid var(--grass)' : 'none',
             padding: '0 32px', height: 36, borderRadius: 'var(--radius-sm)', flexShrink: 0,
           }}
         >
-          {installing ? '…' : installed ? 'Installed' : isModpack ? t.content.install : t.content.add}
+          {installing ? '...' : isInstalled ? 'Installed' : hasUpdate ? 'Update' : t.content.install}
         </Button>
       </div>
     </div>
   )
 }
 
+function contentMatchesTab(contentType: string | undefined, tab: ContentTab): boolean {
+  return contentType === tab
+}
+
 // ─── ContentDetailModal ───────────────────────────────────────────────────────
 
-function ContentDetailModal({ project, tab, onClose, onInstall, installed }: {
+function ContentDetailModal({ project, tab, onClose, onInstall, installed, status }: {
   project: ModrinthProject
   tab: ContentTab
   onClose: () => void
   onInstall: () => void
   installed?: boolean
+  status?: ContentStatus
 }) {
   useScrollLock()
   const t = useT()
@@ -393,6 +471,8 @@ function ContentDetailModal({ project, tab, onClose, onInstall, installed }: {
   const isModpack = tab === 'modpack'
   const accent    = tabColor(tab)
   const tabInfo   = TABS.find(ti => ti.type === tab)!
+  const isInstalled = installed || status === 'installed'
+  const hasUpdate = status === 'update'
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -462,7 +542,7 @@ function ContentDetailModal({ project, tab, onClose, onInstall, installed }: {
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
             <Button
               variant="outline"
-              onClick={() => window.open(modrinthUrl)}
+              onClick={() => { void api.external.open(modrinthUrl) }}
               style={{ height: 32, padding: '0 14px', fontSize: 12, fontWeight: 600, color: accent, borderColor: accent, borderRadius: 'var(--radius-sm)' }}
             >
               {t.content.modrinth}
@@ -547,17 +627,17 @@ function ContentDetailModal({ project, tab, onClose, onInstall, installed }: {
                 <SideLabel>{t.browse.links}</SideLabel>
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {detail.issues_url && (
-                    <Button variant="ghost" onClick={() => window.open(detail.issues_url!)} style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>
+                    <Button variant="ghost" onClick={() => { void api.external.open(detail.issues_url!) }} style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>
                       🐛 Issues ↗
                     </Button>
                   )}
                   {detail.source_url && (
-                    <Button variant="ghost" onClick={() => window.open(detail.source_url!)} style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>
+                    <Button variant="ghost" onClick={() => { void api.external.open(detail.source_url!) }} style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>
                       {'</>'} Source ↗
                     </Button>
                   )}
                   {detail.discord_url && (
-                    <Button variant="ghost" onClick={() => window.open(detail.discord_url!)} style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>
+                    <Button variant="ghost" onClick={() => { void api.external.open(detail.discord_url!) }} style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>
                       💬 Discord ↗
                     </Button>
                   )}
@@ -570,10 +650,10 @@ function ContentDetailModal({ project, tab, onClose, onInstall, installed }: {
               <Button
                 variant="primary"
                 onClick={onInstall}
-                disabled={installed}
-                style={{ width: '100%', height: 36, fontSize: 14, fontWeight: 700, color: '#fff', background: accent }}
+                disabled={isInstalled}
+                style={{ width: '100%', height: 36, fontSize: 14, fontWeight: 700, color: isInstalled ? 'var(--grass)' : '#fff', background: isInstalled ? 'transparent' : hasUpdate ? 'var(--gold)' : accent, border: isInstalled ? '1px solid var(--grass)' : 'none' }}
               >
-                {installed ? 'Installed' : btnLabel}
+                {isInstalled ? 'Installed' : hasUpdate ? 'Update' : btnLabel}
               </Button>
             </div>
           </div>
@@ -630,11 +710,12 @@ interface ContentInstallModalProps {
   project: ModrinthProject
   tab: ContentTab
   instances: Instance[]
+  initialInstance?: Instance | null
   onClose: () => void
   onInstall: (instanceId: string, versionId: string) => void
 }
 
-function ContentInstallModal({ project, tab, instances, onClose, onInstall }: ContentInstallModalProps) {
+function ContentInstallModal({ project, tab, instances, initialInstance, onClose, onInstall }: ContentInstallModalProps) {
   useScrollLock()
   const t = useT()
   const tabLabelMap: Record<ContentTab, string> = {
@@ -645,7 +726,7 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
   }
   const [versions, setVersions]    = useState<ModrinthVersion[]>([])
   const [loading, setLoading]      = useState(true)
-  const [selectedInst, setSelInst] = useState<Instance | null>(null)
+  const [selectedInst, setSelInst] = useState<Instance | null>(initialInstance ?? null)
   const [selectedVer, setSelVer]   = useState<string | null>(null)
   const [alreadyDownloaded, setAlreadyDownloaded] = useState(false)
 
@@ -662,12 +743,45 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
   }, [project.project_id])
 
   useEffect(() => {
+    if (!initialInstance) return
+    setSelInst(initialInstance)
+  }, [initialInstance?.id])
+
+  useEffect(() => {
+    if (versions.length === 0) {
+      setSelVer(null)
+      return
+    }
+    const best = selectedInst
+      ? versions.find(v =>
+          v.game_versions.includes(selectedInst.minecraftVersion)
+          && (tab === 'shader' || !selectedInst.modLoader || v.loaders.some(l => l.toLowerCase() === selectedInst.modLoader?.toLowerCase())),
+        ) ?? versions[0]
+      : versions[0]
+    setSelVer(current => current && versions.some(v => v.id === current) ? current : best.id)
+  }, [selectedInst?.id, selectedInst?.minecraftVersion, selectedInst?.modLoader, tab, versions])
+
+  function selectInstance(inst: Instance) {
+    setSelInst(inst)
+    const best = versions.find(v =>
+      v.game_versions.includes(inst.minecraftVersion)
+      && (tab === 'shader' || !inst.modLoader || v.loaders.some(l => l.toLowerCase() === inst.modLoader?.toLowerCase())),
+    ) ?? versions[0]
+    setSelVer(best?.id ?? null)
+  }
+
+  useEffect(() => {
     let cancelled = false
     setAlreadyDownloaded(false)
     if (!selectedInst || !selectedVer || tab === 'modpack') return
 
     void (async () => {
       try {
+        const recorded = selectedInst.mods?.find(entry => entry.projectId === project.project_id && contentMatchesTab(entry.contentType, tab))
+        if (recorded) {
+          if (!cancelled) setAlreadyDownloaded(recorded.versionId === selectedVer)
+          return
+        }
         const { getPrimaryFile } = await import('@refract/core')
         const filenames = new Set(versions.map(v => getPrimaryFile(v)?.filename).filter((name): name is string => !!name))
         if (filenames.size === 0) return
@@ -682,9 +796,11 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
     })()
 
     return () => { cancelled = true }
-  }, [selectedInst, selectedVer, tab, versions])
+  }, [project.project_id, selectedInst, selectedVer, tab, versions])
 
   const canInstall = selectedInst !== null && selectedVer !== null && !alreadyDownloaded
+  const recorded = selectedInst?.mods?.find(entry => entry.projectId === project.project_id && contentMatchesTab(entry.contentType, tab))
+  const installAction = recorded && selectedVer && recorded.versionId !== selectedVer ? 'Update' : t.content.install
   const tabInfo    = TABS.find(t => t.type === tab)!
 
   return (
@@ -719,7 +835,7 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
                 : instances.map(inst => {
                     const active = selectedInst?.id === inst.id
                     return (
-                      <Button key={inst.id} variant="secondary" onClick={() => setSelInst(inst)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 8px', marginBottom: 3, background: active ? 'var(--accent-tint)' : 'var(--surface-2)', border: `1px solid ${active ? 'var(--accent)' : 'var(--border-r)'}`, borderRadius: 'var(--radius-sm)', height: 'auto' }}>
+                      <Button key={inst.id} variant="secondary" onClick={() => selectInstance(inst)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 8px', marginBottom: 3, background: active ? 'var(--accent-tint)' : 'var(--surface-2)', border: `1px solid ${active ? 'var(--accent)' : 'var(--border-r)'}`, borderRadius: 'var(--radius-sm)', height: 'auto' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inst.name}</div>
                         <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, color: 'var(--ink-4)', marginTop: 1 }}>{inst.minecraftVersion} · {inst.modLoader?.toUpperCase() ?? 'VANILLA'}</div>
                       </Button>
@@ -761,7 +877,7 @@ function ContentInstallModal({ project, tab, instances, onClose, onInstall }: Co
             {!selectedInst ? t.content.pickInstance : !selectedVer ? t.content.pickVersion : alreadyDownloaded ? 'Already downloaded for this instance.' : t.content.installingTo(selectedInst.name)}
           </div>
           <Button variant="primary" disabled={!canInstall} onClick={() => canInstall && onInstall(selectedInst!.id, selectedVer!)} style={{ fontSize: 14, fontWeight: 700, padding: '0 24px', height: 34, borderRadius: 'var(--radius-sm)' }}>
-            {alreadyDownloaded ? 'Downloaded' : t.content.install}
+            {alreadyDownloaded ? 'Installed' : installAction}
           </Button>
         </div>
       </div>
@@ -938,6 +1054,8 @@ function ContentBrowser() {
   const [offset, setOffset]       = useState(0)
   const [loading, setLoading]     = useState(false)
   const [instances, setInstances] = useState<Instance[]>([])
+  const [activeInstance, setActiveInstance] = useState<Instance | null>(null)
+  const [contentStatuses, setContentStatuses] = useState<Map<string, ContentStatus>>(new Map())
   const [toast, setToast]         = useState<{ msg: string; ok: boolean } | null>(null)
 
   const [detailTarget, setDetailTarget]   = useState<ModrinthProject | null>(null)
@@ -973,6 +1091,52 @@ function ContentBrowser() {
     api.instance.list().then(setInstances).catch(() => {})
     api.config.get().then(c => setCfHasKey(!!c.curseforgeApiKey)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!activeInstance) return
+    const next = instances.find(inst => inst.id === activeInstance.id)
+    if (next && next !== activeInstance) setActiveInstance(next)
+  }, [instances, activeInstance])
+
+  useEffect(() => {
+    let cancelled = false
+    if (tab === 'modpack' || !activeInstance) {
+      setContentStatuses(new Map())
+      return
+    }
+
+    const installed = new Map(
+      (activeInstance.mods ?? [])
+        .filter(entry => contentMatchesTab(entry.contentType, tab))
+        .map(entry => [entry.projectId, entry]),
+    )
+    const installedProjects = results.filter(project => installed.has(project.project_id))
+    if (installedProjects.length === 0) {
+      setContentStatuses(new Map())
+      return
+    }
+
+    void (async () => {
+      const entries = await Promise.all(installedProjects.map(async project => {
+        const current = installed.get(project.project_id)
+        if (!current) return [project.project_id, null] as const
+        try {
+          const versions = await api.modrinth.versions(
+            project.project_id,
+            activeInstance.minecraftVersion,
+            tab === 'shader' ? undefined : activeInstance.modLoader,
+          )
+          const latest = versions[0]
+          return [project.project_id, latest && latest.id !== current.versionId ? 'update' : 'installed'] as const
+        } catch {
+          return [project.project_id, 'installed'] as const
+        }
+      }))
+      if (!cancelled) setContentStatuses(new Map(entries.filter((entry): entry is readonly [string, ContentStatus] => entry[1] !== null)))
+    })()
+
+    return () => { cancelled = true }
+  }, [activeInstance, results, tab])
 
   useEffect(() => {
     const offProgress = api.modpack.onProgress(({ projectId, step, percent }) => {
@@ -1053,6 +1217,8 @@ function ContentBrowser() {
     try {
       await api.modrinth.contentInstall(instanceId, installTarget.project_id, name, tab, versionId)
       showToast(`${name} installed to instance.`, true)
+      const nextInstances = await api.instance.list().catch(() => null)
+      if (nextInstances) setInstances(nextInstances)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Install failed', false)
     } finally {
@@ -1137,6 +1303,19 @@ function ContentBrowser() {
         </div>
         <SortDropdown value={sort} onChange={s => setSort(s)} />
         <VersionDropdown value={gameVersion} onChange={v => { setVersion(v); setOffset(0) }} />
+        {tab !== 'modpack' && instances.length > 0 && (
+          <InstanceDropdown
+            instances={instances}
+            value={activeInstance}
+            onChange={inst => {
+              setActiveInstance(inst)
+              if (inst) {
+                setVersion(inst.minecraftVersion)
+                setLoader(tabInfo.showLoader ? inst.modLoader ?? null : null)
+              }
+            }}
+          />
+        )}
         {tabInfo.showLoader && (
           <div style={{ display: 'flex', gap: 4 }}>
             <Button variant="outline" onClick={() => setLoader(null)} style={{ fontSize: 11, fontWeight: 500, color: loader === null ? 'var(--accent)' : 'var(--ink-4)', background: loader === null ? 'var(--accent-tint)' : 'var(--surface)', borderColor: loader === null ? 'var(--accent)' : 'var(--border-r)', borderRadius: 'var(--radius-sm)', padding: '3px 8px' }}>
@@ -1212,6 +1391,7 @@ function ContentBrowser() {
               tab={tab}
               installing={installingId === project.project_id}
               installed={tab === 'modpack' && installedModrinthInstances.has(project.project_id)}
+              status={tab !== 'modpack' ? contentStatuses.get(project.project_id) ?? null : null}
               onInstall={() => openInstall(project)}
               onDetail={() => setDetailTarget(project)}
             />
@@ -1244,6 +1424,7 @@ function ContentBrowser() {
           onClose={() => setDetailTarget(null)}
           onInstall={() => openInstall(detailTarget)}
           installed={tab === 'modpack' && installedModrinthInstances.has(detailTarget.project_id)}
+          status={tab !== 'modpack' ? contentStatuses.get(detailTarget.project_id) ?? null : null}
         />
       )}
 
@@ -1261,6 +1442,7 @@ function ContentBrowser() {
           project={installTarget}
           tab={tab}
           instances={instances}
+          initialInstance={activeInstance}
           onClose={() => setTarget(null)}
           onInstall={handleContentInstall}
         />
@@ -1632,7 +1814,7 @@ function CFModpackDetailModal({ project, onClose, onInstall }: {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
-            <Button variant="outline" onClick={() => window.open(cfUrl)} style={{ height: 32, padding: '0 14px', fontSize: 12, fontWeight: 600, color: '#f16436', borderColor: '#f16436', borderRadius: 'var(--radius-sm)' }}>CurseForge ↗</Button>
+            <Button variant="outline" onClick={() => { void api.external.open(cfUrl) }} style={{ height: 32, padding: '0 14px', fontSize: 12, fontWeight: 600, color: '#f16436', borderColor: '#f16436', borderRadius: 'var(--radius-sm)' }}>CurseForge ↗</Button>
             <Button variant="ghost" size="icon" onClick={onClose} style={{ color: 'var(--ink-4)', fontSize: 20, lineHeight: 1, padding: 4 }}>✕</Button>
           </div>
         </div>
@@ -1666,9 +1848,9 @@ function CFModpackDetailModal({ project, onClose, onInstall }: {
               <div>
                 <SideLabel>Links</SideLabel>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
-                  {project.links.websiteUrl && <Button variant="ghost" onClick={() => window.open(project.links.websiteUrl!)} style={{ fontSize: 11, fontWeight: 500, color: '#f16436', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>CurseForge ↗</Button>}
-                  {project.links.issuesUrl  && <Button variant="ghost" onClick={() => window.open(project.links.issuesUrl!)}  style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>Issues ↗</Button>}
-                  {project.links.sourceUrl  && <Button variant="ghost" onClick={() => window.open(project.links.sourceUrl!)}  style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>Source ↗</Button>}
+                  {project.links.websiteUrl && <Button variant="ghost" onClick={() => { void api.external.open(project.links.websiteUrl!) }} style={{ fontSize: 11, fontWeight: 500, color: '#f16436', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>CurseForge ↗</Button>}
+                  {project.links.issuesUrl  && <Button variant="ghost" onClick={() => { void api.external.open(project.links.issuesUrl!) }}  style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>Issues ↗</Button>}
+                  {project.links.sourceUrl  && <Button variant="ghost" onClick={() => { void api.external.open(project.links.sourceUrl!) }}  style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent)', textAlign: 'left', justifyContent: 'flex-start', padding: 0, height: 'auto' }}>Source ↗</Button>}
                 </div>
               </div>
             )}

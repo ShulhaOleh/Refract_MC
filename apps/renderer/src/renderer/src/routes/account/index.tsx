@@ -37,7 +37,8 @@ function accountBadge(type: SafeAccount['type']) {
 }
 
 function accessText(account: SafeAccount, t: T) {
-  if (account.canPlayMinecraft) return t.account.licenseVerified
+  if (account.type === 'microsoft') return t.account.licenseVerified
+  if (account.type === 'yggdrasil') return t.account.yggdrasilAccess
   return t.account.offlineAccess
 }
 

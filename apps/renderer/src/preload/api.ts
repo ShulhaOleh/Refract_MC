@@ -119,6 +119,9 @@ export const api = {
   discord: {
     openInvite: (): Promise<void> => ipcRenderer.invoke('discord.openInvite'),
   },
+  external: {
+    open: (url: string): Promise<void> => ipcRenderer.invoke('external.open', url),
+  },
   modrinth: {
     search:    (query: string, gameVersion?: string, loader?: string, category?: string, limit?: number, offset?: number) =>
       ipcRenderer.invoke('modrinth.search', query, gameVersion, loader, category, limit, offset),

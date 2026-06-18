@@ -102,6 +102,7 @@ function AvatarStatus({ account }: { account: SafeAccount | null }) {
 }
 
 function AvatarBlock({ compact }: { compact: boolean }) {
+  const t = useT()
   const [account, setAccount] = useState<SafeAccount | null>(null)
   const [skinFailed, setSkinFailed] = useState(false)
   const [skinFallback, setSkinFallback] = useState(false)
@@ -142,7 +143,7 @@ function AvatarBlock({ compact }: { compact: boolean }) {
 
   if (compact) {
     return (
-      <div title={account?.username ?? 'Guest'} style={{ display:'flex', justifyContent:'center', padding:'6px 0 12px', borderBottom:'1px solid var(--sb-line)' }}>
+      <div title={account?.username ?? t.sidebar.guest} style={{ display:'flex', justifyContent:'center', padding:'6px 0 12px', borderBottom:'1px solid var(--sb-line)' }}>
         {avatar}
       </div>
     )
@@ -153,14 +154,14 @@ function AvatarBlock({ compact }: { compact: boolean }) {
       {avatar}
       <div style={{ minWidth:0, flex:1 }}>
         <div style={{ fontSize:14, fontWeight:600, color:'var(--ink)', lineHeight:1.3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-          {account ? account.username : 'Guest'}
+          {account ? account.username : t.sidebar.guest}
         </div>
         <div style={{ fontSize:11, color: account?.canPlayMinecraft ? 'var(--grass)' : 'var(--gold)', lineHeight:1.4 }}>
           <AvatarStatus account={account} />
         </div>
       </div>
       {account && (
-        <button onClick={signOut} title="Sign out" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--ink-4)', padding:4, display:'flex', opacity:.7 }}>
+        <button onClick={signOut} title={t.sidebar.signOut} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--ink-4)', padding:4, display:'flex', opacity:.7 }}>
           <SignOutIcon />
         </button>
       )}
@@ -282,7 +283,7 @@ function FriendsPanel() {
         {!adding && (
           <button
             onClick={startAdd}
-            title="Add friend"
+            title={t.sidebar.addFriendTitle}
             style={{
               background: 'none', border: '1px solid var(--border-r)',
               color: 'var(--ink-4)', cursor: 'pointer',
@@ -384,6 +385,7 @@ function FriendRow({ friend, onRemove, onNoteChange, onSkinClick }: {
   onNoteChange: (note: string) => void
   onSkinClick: () => void
 }) {
+  const t = useT()
   const [hovered, setHovered]       = useState(false)
   const [imgSrc, setImgSrc] = useState(() => avatarUrl(friend.uuid))
   const [imgFailed, setImgFailed]   = useState(false)
@@ -399,9 +401,7 @@ function FriendRow({ friend, onRemove, onNoteChange, onSkinClick }: {
   }
 
   function openNameMC() {
-    const shell = (window as Window & { electron?: { shell?: { openExternal?: (url: string) => void } } }).electron?.shell
-    if (shell?.openExternal) shell.openExternal(`https://namemc.com/profile/${friend.uuid}`)
-    else window.open(`https://namemc.com/profile/${friend.uuid}`, '_blank')
+    void api.external.open(`https://namemc.com/profile/${friend.uuid}`)
   }
 
   function startNote() {
@@ -427,7 +427,7 @@ function FriendRow({ friend, onRemove, onNoteChange, onSkinClick }: {
         {/* Avatar — click opens skin preview */}
         <div
           onClick={onSkinClick}
-          title="View skin"
+          title={t.sidebar.viewSkin}
           style={{ width: 24, height: 24, flexShrink: 0, position: 'relative', overflow: 'hidden', border: '1px solid var(--line)', background: 'var(--surface-3)', imageRendering: 'pixelated', cursor: 'pointer' }}
         >
           {!imgFailed ? (
@@ -447,7 +447,7 @@ function FriendRow({ friend, onRemove, onNoteChange, onSkinClick }: {
         {/* Username — click opens NameMC */}
         <div
           onClick={openNameMC}
-          title="View on NameMC"
+          title={t.sidebar.viewNameMc}
           style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
         >
           {friend.username}
@@ -456,14 +456,14 @@ function FriendRow({ friend, onRemove, onNoteChange, onSkinClick }: {
         {/* Action buttons (visible on hover) */}
         {hovered && (
           <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-            <ActionBtn title="Copy UUID" active={copied === 'uuid'} onClick={() => copy(friend.uuid, 'uuid')}>
+            <ActionBtn title={t.sidebar.copyUuid} active={copied === 'uuid'} onClick={() => copy(friend.uuid, 'uuid')}>
               {copied === 'uuid' ? '✓' : '#'}
             </ActionBtn>
             <ActionBtn title="Copy /whitelist add command" active={copied === 'wl'} onClick={() => copy(`/whitelist add ${friend.username}`, 'wl')}>
               {copied === 'wl' ? '✓' : '⊕'}
             </ActionBtn>
-            <ActionBtn title="Add note" onClick={startNote}>✎</ActionBtn>
-            <ActionBtn title="Remove friend" danger onClick={onRemove}>✕</ActionBtn>
+            <ActionBtn title={t.sidebar.addNote} onClick={startNote}>✎</ActionBtn>
+            <ActionBtn title={t.sidebar.removeFriend} danger onClick={onRemove}>✕</ActionBtn>
           </div>
         )}
       </div>
@@ -570,7 +570,7 @@ export function Sidebar() {
   const navItems: NavItemProps[] = [
     { to: '/',          label: t.nav.library,    iconSrc: libraryIcon,    exact: true  },
     { to: '/browse/',   label: t.nav.browse,     iconSrc: browseModsIcon, exact: false },
-    { to: '/news/',     label: 'News',           iconSrc: newsIcon,       exact: false },
+    { to: '/news/',     label: t.nav.news,       iconSrc: newsIcon,       exact: false },
     { to: '/modpacks/', label: t.nav.content,    iconSrc: modpacksIcon,   exact: false },
     { to: '/skins',     label: t.skins.navLabel, iconSrc: skinsIcon,      exact: false },
   ]

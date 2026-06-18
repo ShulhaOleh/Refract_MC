@@ -680,6 +680,13 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
         serde_json::json!({ "lastPlayed": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true) }),
     );
     crate::discord::set_game_activity(&instance_id, &instance_name, &mc_version, Some(&loader));
+    crate::analytics::track_event(
+        "instance_launch",
+        Some(serde_json::json!({
+            "mod_loader": loader,
+            "mc_version": mc_version,
+        })),
+    );
 
     // Watcher owns the Child and blocks on wait(); on exit it clears the PID and
     // notifies the renderer so the UI flips back from "running".

@@ -114,6 +114,16 @@ export function registerModrinthIpc(): void {
     const hashes = valid.map(f => f.hash)
     const hashToFile = new Map(valid.map(f => [f.hash, f.filename]))
 
+    // Resolve EVERY installed jar to its current Modrinth version. Unlike the
+    // update endpoint, version_files has no loader/game-version filter, so it
+    // matches any Modrinth-known jar — including mods already at the latest
+    // version. This is what lets the browser mark *all* installed mods.
+    const knownMap = await postJson<Record<string, ModrinthVersion>>(
+      'https://api.modrinth.com/v2/version_files',
+      { hashes, algorithm: 'sha512' }
+    )
+
+    // Of those, which have a newer version for this instance's loader + MC version.
     const updateMap = await postJson<Record<string, ModrinthVersion>>(
       'https://api.modrinth.com/v2/version_files/update',
       {
@@ -125,15 +135,16 @@ export function registerModrinthIpc(): void {
     )
 
     const results: ModUpdateEntry[] = []
-    for (const [inputHash, latestVersion] of Object.entries(updateMap)) {
+    for (const [inputHash, currentVersion] of Object.entries(knownMap)) {
       const filename = hashToFile.get(inputHash)
       if (!filename) continue
+      const latestVersion = updateMap[inputHash] ?? currentVersion
       const primaryFile = latestVersion.files.find(f => f.primary) ?? latestVersion.files[0]
       if (!primaryFile) continue
       const latestHash = primaryFile.hashes.sha512
       results.push({
         filename,
-        projectId: latestVersion.project_id,
+        projectId: currentVersion.project_id,
         latestVersionId: latestVersion.id,
         latestVersionName: latestVersion.version_number,
         latestFilename: primaryFile.filename,

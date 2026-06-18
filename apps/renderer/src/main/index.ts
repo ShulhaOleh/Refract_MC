@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'ele
 import { join } from 'path'
 import { autoUpdater } from 'electron-updater'
 import { registerAllIpcHandlers } from './ipc'
+import { validateExternalUrl } from './ipc/external-links.ipc'
 import { ensureAppDirs } from './services/paths'
 import { loadConfig, getConfig } from './services/config'
 import { installProcessErrorLogging, logError } from './services/logger'
@@ -47,7 +48,11 @@ function createWindow(): BrowserWindow {
   mainWindow.on('ready-to-show', () => { if (!getConfig().startMinimized) mainWindow.show() })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    try {
+      shell.openExternal(validateExternalUrl(details.url))
+    } catch {
+      // Deny untrusted renderer-created windows silently.
+    }
     return { action: 'deny' }
   })
 

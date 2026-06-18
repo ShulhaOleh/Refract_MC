@@ -13,6 +13,27 @@ export type AppConfig = Awaited<ReturnType<RefractAPI['config']['get']>>
 
 const CONFIG_KEY = 'refract.dev.config'
 const INSTANCES_KEY = 'refract.dev.instances'
+const ALLOWED_EXTERNAL_HOSTS = new Set([
+  'www.minecraft.net',
+  'minecraft.net',
+  'modrinth.com',
+  'www.curseforge.com',
+  'curseforge.com',
+  'github.com',
+  'www.github.com',
+  'gitlab.com',
+  'www.gitlab.com',
+  'bitbucket.org',
+  'www.bitbucket.org',
+  'codeberg.org',
+  'www.codeberg.org',
+  'discord.gg',
+  'discord.com',
+  'www.discord.com',
+  'discordapp.com',
+  'namemc.com',
+  'www.namemc.com',
+])
 
 const DEFAULT_CONFIG: AppConfig = {
   activeAccountId: null,
@@ -39,6 +60,18 @@ function writeJson<T>(key: string, value: T): void {
   } catch (error) {
     logger.error(`browserApi:${key}:write`, error)
   }
+}
+
+function validateExternalUrl(value: string): string {
+  const url = new URL(value)
+  if (url.protocol !== 'https:' || !ALLOWED_EXTERNAL_HOSTS.has(url.hostname.toLowerCase())) {
+    throw new Error('External link is not allowed.')
+  }
+  return url.toString()
+}
+
+function openBrowserExternal(value: string): void {
+  globalThis.open(validateExternalUrl(value), '_blank', 'noopener,noreferrer')
 }
 
 function getConfig(): AppConfig {
@@ -234,12 +267,17 @@ function createBrowserApi(): RefractAPI {
     news: {
       list: fetchMinecraftNews,
       open: async (url: string) => {
-        window.open(url, '_blank', 'noopener,noreferrer')
+        openBrowserExternal(url)
       },
     },
     discord: {
       openInvite: async () => {
-        window.open('https://discord.gg/SUPuuTjMGU', '_blank', 'noopener,noreferrer')
+        openBrowserExternal('https://discord.gg/SUPuuTjMGU')
+      },
+    },
+    external: {
+      open: async (url: string) => {
+        openBrowserExternal(url)
       },
     },
     modrinth: {
@@ -549,10 +587,8 @@ function createTauriApi(): RefractAPI {
   const base = createBrowserApi()
   return {
     ...base,
-    // Tauri analytics intentionally stays disabled until telemetry secret
-    // injection and privacy behavior are ported for this runtime.
     analytics: {
-      track: () => undefined,
+      track: (name, params) => { void tinvoke('analytics_track', { name, params }).catch(() => {}) },
     },
     news: {
       list: (() => tinvoke('minecraft_news')) as RefractAPI['news']['list'],
@@ -560,6 +596,9 @@ function createTauriApi(): RefractAPI {
     },
     discord: {
       openInvite: (() => tinvoke('open_discord_invite')) as RefractAPI['discord']['openInvite'],
+    },
+    external: {
+      open: ((url: string) => tinvoke('open_external_link', { url })) as RefractAPI['external']['open'],
     },
     config: {
       ...base.config,
@@ -762,15 +801,28 @@ function createTauriApi(): RefractAPI {
         if (!target) throw new Error(`No compatible version of ${projectName} found.`)
         const file = getPrimaryFile(target)
         if (!file) throw new Error(`No download file found for ${projectName}.`)
-        const knownFiles = new Set(versions.map(v => getPrimaryFile(v)?.filename).filter((name): name is string => !!name))
-        const installed = await tinvoke('mods_list', { instanceId }) as Array<{ filename: string; type: string }>
-        if (installed.some(entry =>
-          entry.type === contentType && (knownFiles.has(entry.filename) || (entry.filename.endsWith('.disabled') && knownFiles.has(entry.filename.slice(0, -'.disabled'.length)))),
-        )) {
+        const recorded = instance.mods?.find(entry => entry.projectId === projectId && entry.contentType === contentType)
+        if (recorded?.versionId === target.id) {
           throw new Error(`${projectName} is already downloaded for this instance.`)
         }
-        await tinvoke('install_content_file', { instanceId, url: file.url, fileName: file.filename, contentType, sha512: file.hashes?.sha512, sha1: file.hashes?.sha1 })
+        if (!recorded) {
+          const knownFiles = new Set(versions.map(v => getPrimaryFile(v)?.filename).filter((name): name is string => !!name))
+          const installed = await tinvoke('mods_list', { instanceId }) as Array<{ filename: string; type: string }>
+          if (installed.some(entry =>
+            entry.type === contentType && (knownFiles.has(entry.filename) || (entry.filename.endsWith('.disabled') && knownFiles.has(entry.filename.slice(0, -'.disabled'.length)))),
+          )) {
+            throw new Error(`${projectName} is already downloaded for this instance.`)
+          }
+        }
+        const mod = {
+          projectId, versionId: target.id, name: projectName, fileName: file.filename, fileSize: file.size,
+          loader: target.loaders[0] ?? 'unknown', gameVersion: target.game_versions[0] ?? instance.minecraftVersion,
+          installedAt: new Date().toISOString(), contentType,
+        }
+        await tinvoke('install_content_file', { instanceId, url: file.url, fileName: file.filename, contentType, mod, sha512: file.hashes?.sha512, sha1: file.hashes?.sha1 })
       }) as RefractAPI['modrinth']['contentInstall'],
+      checkModUpdates: ((instanceId: string, force?: boolean) => tinvoke('check_mod_updates', { instanceId, force })) as RefractAPI['modrinth']['checkModUpdates'],
+      applyModUpdates: ((instanceId: string, updates: Array<{ filename: string; downloadUrl: string; newFilename: string }>) => tinvoke('apply_mod_updates', { instanceId, updates })) as RefractAPI['modrinth']['applyModUpdates'],
       uninstall: ((instanceId: string, projectId: string) => tinvoke('uninstall_mod', { instanceId, projectId })) as RefractAPI['modrinth']['uninstall'],
     },
     mods: {
@@ -961,7 +1013,7 @@ export const api: RefractAPI = wrapApi(
 export const supportsFilePicker = !!electronApi || isTauri
 
 /** True when the active runtime can send analytics events. */
-export const analyticsAvailable = !isTauri
+export const analyticsAvailable = true
 
 /**
  * Native file picker for mod/pack files (Tauri only) — returns absolute paths to
