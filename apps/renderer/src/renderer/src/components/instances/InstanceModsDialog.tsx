@@ -21,6 +21,7 @@ type ScreenshotEntry = { filename: string; sizeKb: number; timestamp: number; da
 type ModUpdateEntry = {
   filename: string; projectId: string; latestVersionId: string
   latestVersionName: string; latestFilename: string; downloadUrl: string; hasUpdate: boolean
+  contentType: string
 }
 
 type TabFilter = 'all' | ContentType | 'worlds' | 'screenshots' | 'updates' | 'servers'
@@ -464,7 +465,7 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
                   try {
                     await api.modrinth.applyModUpdates(
                       instance.id,
-                      updatesAvailable.map(u => ({ filename: u.filename, downloadUrl: u.downloadUrl, newFilename: u.latestFilename }))
+                      updatesAvailable.map(u => ({ filename: u.filename, downloadUrl: u.downloadUrl, newFilename: u.latestFilename, contentType: u.contentType }))
                     )
                     await loadUpdates(true)
                     onUpdateApplied?.(instance.id)
@@ -967,8 +968,13 @@ function ScreenshotThumb({ shot, onClick }: { shot: ScreenshotEntry; onClick: ()
   )
 }
 
+const UPDATE_TYPE_LABEL: Record<string, string> = {
+  mod: 'Mod', resourcepack: 'Resource Pack', shader: 'Shader', datapack: 'Datapack',
+}
+
 function UpdateRow({ entry }: { entry: ModUpdateEntry }) {
-  const displayName = entry.filename.replace(/\.jar(\.disabled)?$/, '').replace(/-\d.*$/, '')
+  const displayName = entry.filename.replace(/\.(jar|zip)(\.disabled)?$/, '').replace(/-\d.*$/, '')
+  const typeColor = (TYPE_COLOR as Record<string, string>)[entry.contentType] ?? 'var(--ink-4)'
   return (
     <div className="detail-row" style={{
       display: 'flex', alignItems: 'center', gap: 10,
@@ -980,8 +986,13 @@ function UpdateRow({ entry }: { entry: ModUpdateEntry }) {
         background: entry.hasUpdate ? 'var(--gold)' : 'var(--grass)',
       }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {displayName}
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 6 }}>
+          {entry.contentType && entry.contentType !== 'mod' && (
+            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', color: typeColor, border: `1px solid ${typeColor}`, borderRadius: 'var(--radius-sm)', padding: '0 4px', flexShrink: 0 }}>
+              {UPDATE_TYPE_LABEL[entry.contentType] ?? entry.contentType}
+            </span>
+          )}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</span>
         </div>
         <div style={{ fontSize: 10, color: 'var(--ink-4)', marginTop: 1 }}>
           {entry.hasUpdate ? (

@@ -437,6 +437,10 @@ pub struct ModUpdateEntry {
     download_url: String,
     #[serde(rename = "hasUpdate")]
     has_update: bool,
+    /// "mod" | "resourcepack" | "shader" — which folder this file lives in, so the
+    /// browser can label it and apply_mod_updates can write the update back correctly.
+    #[serde(rename = "contentType")]
+    content_type: String,
 }
 
 #[derive(Deserialize)]
@@ -446,6 +450,24 @@ pub struct ApplyModUpdate {
     download_url: String,
     #[serde(rename = "newFilename")]
     new_filename: String,
+    #[serde(rename = "contentType", default)]
+    content_type: Option<String>,
+}
+
+/// Modrinth loaders to filter the update lookup by, per content type. Mods use the
+/// instance's loader; resource packs are tagged `minecraft`; shaders span the shader
+/// loaders. Passing the wrong loader makes the update endpoint return nothing.
+fn update_loaders(content_type: &str, mod_loader: &Option<Vec<String>>) -> Option<Vec<String>> {
+    match content_type {
+        "resourcepack" => Some(vec!["minecraft".to_string()]),
+        "shader" => Some(vec![
+            "iris".to_string(),
+            "optifine".to_string(),
+            "canvas".to_string(),
+            "vanilla".to_string(),
+        ]),
+        _ => mod_loader.clone(),
+    }
 }
 
 #[derive(Serialize)]
@@ -486,34 +508,41 @@ pub async fn check_mod_updates(
     force: Option<bool>,
 ) -> Result<Vec<ModUpdateEntry>, String> {
     let instance = instances::get_instance_by_id(instance_id.clone()).ok_or("instance not found")?;
-    let mods_dir = game_dir(&instance_id).join("mods");
-    if !mods_dir.exists() {
-        return Ok(Vec::new());
-    }
+    let game_root = game_dir(&instance_id);
 
-    // Enumerate the enabled jars and fold their (name, size, mtime) into a cheap
-    // directory signature — no file reads, so this is fast even with many mods.
-    let mut entries: Vec<(String, PathBuf)> = Vec::new();
+    // Enumerate enabled content across mods, resource packs and shaders, tagging each
+    // file with its content type, and fold (type/name, size, mtime) into a cheap
+    // directory signature — no file reads, so this stays fast even with many files.
+    let scan: [(&str, &str, &str); 3] = [
+        ("mods", "mod", ".jar"),
+        ("resourcepacks", "resourcepack", ".zip"),
+        ("shaderpacks", "shader", ".zip"),
+    ];
+    let mut entries: Vec<(String, PathBuf, &'static str)> = Vec::new();
     let mut sig_parts: Vec<(String, u64, u64)> = Vec::new();
-    for entry in fs::read_dir(&mods_dir).map_err(|e| e.to_string())?.flatten() {
-        let filename = entry.file_name().to_string_lossy().to_string();
-        if !filename.ends_with(".jar") || filename.ends_with(".disabled") {
-            continue;
+    for (subdir, content_type, ext) in scan {
+        let dir = game_root.join(subdir);
+        let Ok(read) = fs::read_dir(&dir) else { continue };
+        for entry in read.flatten() {
+            let filename = entry.file_name().to_string_lossy().to_string();
+            if !filename.ends_with(ext) || filename.ends_with(".disabled") {
+                continue;
+            }
+            let path = entry.path();
+            let Ok(meta) = entry.metadata() else { continue };
+            if !meta.is_file() {
+                continue;
+            }
+            let size = meta.len();
+            let mtime = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            sig_parts.push((format!("{content_type}/{filename}"), size, mtime));
+            entries.push((filename, path, content_type));
         }
-        let path = entry.path();
-        let Ok(meta) = entry.metadata() else { continue };
-        if !meta.is_file() {
-            continue;
-        }
-        let size = meta.len();
-        let mtime = meta
-            .modified()
-            .ok()
-            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-        sig_parts.push((filename.clone(), size, mtime));
-        entries.push((filename, path));
     }
     if entries.is_empty() {
         return Ok(Vec::new());
@@ -537,28 +566,29 @@ pub async fn check_mod_updates(
         }
     }
 
-    // Hash the jars off the async runtime — reusing cached hashes for unchanged files.
-    let valid: Vec<(String, String)> = tauri::async_runtime::spawn_blocking(move || {
-        let mut out: Vec<(String, String)> = Vec::new();
-        for (filename, path) in entries {
-            if let Ok(meta) = fs::metadata(&path) {
-                if let Ok(hash) = sha512_file_cached(&path, &meta) {
-                    out.push((filename, hash));
+    // Hash the files off the async runtime — reusing cached hashes for unchanged files.
+    let valid: Vec<(String, &'static str, String)> =
+        tauri::async_runtime::spawn_blocking(move || {
+            let mut out: Vec<(String, &'static str, String)> = Vec::new();
+            for (filename, path, content_type) in entries {
+                if let Ok(meta) = fs::metadata(&path) {
+                    if let Ok(hash) = sha512_file_cached(&path, &meta) {
+                        out.push((filename, content_type, hash));
+                    }
                 }
             }
-        }
-        out
-    })
-    .await
-    .map_err(|e| e.to_string())?;
+            out
+        })
+        .await
+        .map_err(|e| e.to_string())?;
     if valid.is_empty() {
         return Ok(Vec::new());
     }
 
-    let hashes: Vec<String> = valid.iter().map(|(_, hash)| hash.clone()).collect();
-    let hash_to_file: HashMap<String, String> = valid
+    let hashes: Vec<String> = valid.iter().map(|(_, _, hash)| hash.clone()).collect();
+    let hash_to_file: HashMap<String, (String, &'static str)> = valid
         .into_iter()
-        .map(|(filename, hash)| (hash, filename))
+        .map(|(filename, content_type, hash)| (hash, (filename, content_type)))
         .collect();
     let loader = instance
         .get("modLoader")
@@ -572,11 +602,11 @@ pub async fn check_mod_updates(
 
     let client = reqwest::Client::new();
 
-    // 1. Resolve EVERY installed jar to its current Modrinth version. Unlike the
+    // 1. Resolve EVERY installed file to its current Modrinth version. Unlike the
     //    update endpoint, `version_files` has no loader / game-version filter, so it
-    //    matches any Modrinth-known jar — including mods already at the latest
-    //    version or built for a slightly different MC version. This is what lets the
-    //    browser mark *all* installed mods, not just the ones with a pending update.
+    //    matches any Modrinth-known file — mods, resource packs and shaders alike,
+    //    including ones already at the latest version. This is what lets the browser
+    //    mark *all* installed content, not just the ones with a pending update.
     let known_body = json!({ "hashes": hashes.clone(), "algorithm": "sha512" });
     let known_res = client
         .post("https://api.modrinth.com/v2/version_files")
@@ -594,28 +624,40 @@ pub async fn check_mod_updates(
     }
     let known_map: HashMap<String, Value> = known_res.json().await.map_err(|e| e.to_string())?;
 
-    // 2. Ask which of those have a newer version for this instance's loader + MC version.
-    let update_body = json!({
-        "hashes": hashes,
-        "algorithm": "sha512",
-        "loaders": loader,
-        "game_versions": [game_version],
-    });
-    let update_res = client
-        .post("https://api.modrinth.com/v2/version_files/update")
-        .header("accept", "application/json")
-        .json(&update_body)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    net::validate_url(update_res.url().as_str(), net::MODRINTH_HOSTS)?;
-    if !update_res.status().is_success() {
-        return Err(format!(
-            "HTTP {} from Modrinth update check",
-            update_res.status()
-        ));
+    // 2. Ask which have a newer version, querying per content type with the loaders
+    //    that type uses (mods → instance loader, resource packs → minecraft, shaders →
+    //    shader loaders). A failure for one type is non-fatal: those items still get
+    //    listed via step 1, just without an update flag.
+    let mut by_type: HashMap<&'static str, Vec<String>> = HashMap::new();
+    for (hash, (_, content_type)) in &hash_to_file {
+        by_type.entry(content_type).or_default().push(hash.clone());
     }
-    let update_map: HashMap<String, Value> = update_res.json().await.map_err(|e| e.to_string())?;
+    let mut update_map: HashMap<String, Value> = HashMap::new();
+    for (content_type, group_hashes) in by_type {
+        let update_body = json!({
+            "hashes": group_hashes,
+            "algorithm": "sha512",
+            "loaders": update_loaders(content_type, &loader),
+            "game_versions": [game_version],
+        });
+        let Ok(update_res) = client
+            .post("https://api.modrinth.com/v2/version_files/update")
+            .header("accept", "application/json")
+            .json(&update_body)
+            .send()
+            .await
+        else {
+            continue;
+        };
+        if net::validate_url(update_res.url().as_str(), net::MODRINTH_HOSTS).is_err()
+            || !update_res.status().is_success()
+        {
+            continue;
+        }
+        if let Ok(map) = update_res.json::<HashMap<String, Value>>().await {
+            update_map.extend(map);
+        }
+    }
 
     // The primary download file of a version (the one flagged primary, else the first).
     fn primary_file(version: &Value) -> Option<&Value> {
@@ -631,7 +673,7 @@ pub async fn check_mod_updates(
     // to the installed version itself so the mod still counts as "downloaded".
     let mut out = Vec::new();
     for (input_hash, current_version) in &known_map {
-        let Some(filename) = hash_to_file.get(input_hash).cloned() else {
+        let Some((filename, content_type)) = hash_to_file.get(input_hash).cloned() else {
             continue;
         };
         let latest_version = update_map.get(input_hash).unwrap_or(current_version);
@@ -673,6 +715,7 @@ pub async fn check_mod_updates(
                 .to_string(),
             download_url: download_url.to_string(),
             has_update: !latest_hash.eq_ignore_ascii_case(input_hash),
+            content_type: content_type.to_string(),
         });
     }
 
@@ -687,10 +730,11 @@ pub async fn apply_mod_updates(
     instance_id: String,
     updates: Vec<ApplyModUpdate>,
 ) -> Result<Vec<ApplyModUpdateResult>, String> {
-    let mods_dir = game_dir(&instance_id).join("mods");
+    let game_root = game_dir(&instance_id);
     let mut results = Vec::new();
     for update in updates {
         let result = async {
+            let dir = game_root.join(subdir_for(update.content_type.as_deref().unwrap_or("mod")));
             let new_name = Path::new(&update.new_filename)
                 .file_name()
                 .ok_or("invalid new filename")?
@@ -704,13 +748,13 @@ pub async fn apply_mod_updates(
             net::download_to(
                 &reqwest::Client::new(),
                 &update.download_url,
-                &mods_dir.join(&new_name),
+                &dir.join(&new_name),
                 net::MODRINTH_HOSTS,
                 None,
             )
             .await?;
-            let old_path = mods_dir.join(&old_name);
-            let new_path = mods_dir.join(&new_name);
+            let old_path = dir.join(&old_name);
+            let new_path = dir.join(&new_name);
             if old_path.exists() && old_path != new_path {
                 fs::remove_file(old_path).map_err(|e| e.to_string())?;
             }

@@ -22,6 +22,7 @@ interface ModUpdateEntry {
   latestFilename: string
   downloadUrl: string
   hasUpdate: boolean
+  contentType: string
 }
 
 async function sha512File(filePath: string): Promise<string> {
@@ -150,6 +151,7 @@ export function registerModrinthIpc(): void {
         latestFilename: primaryFile.filename,
         downloadUrl: primaryFile.url,
         hasUpdate: latestHash !== inputHash,
+        contentType: 'mod',
       })
     }
     return results

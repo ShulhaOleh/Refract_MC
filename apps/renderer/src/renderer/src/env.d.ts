@@ -228,8 +228,8 @@ declare global {
         uninstall: (instanceId: string, projectId: string) => Promise<void>
         gameVersions: () => Promise<import('@refract/core').ModrinthGameVersion[]>
         contentInstall: (instanceId: string, projectId: string, projectName: string, contentType: string, versionId?: string) => Promise<void>
-        checkModUpdates: (instanceId: string, force?: boolean) => Promise<Array<{ filename: string; projectId: string; latestVersionId: string; latestVersionName: string; latestFilename: string; downloadUrl: string; hasUpdate: boolean }>>
-        applyModUpdates: (instanceId: string, updates: Array<{ filename: string; downloadUrl: string; newFilename: string }>) => Promise<Array<{ filename: string; success: boolean; error?: string }>>
+        checkModUpdates: (instanceId: string, force?: boolean) => Promise<Array<{ filename: string; projectId: string; latestVersionId: string; latestVersionName: string; latestFilename: string; downloadUrl: string; hasUpdate: boolean; contentType: string }>>
+        applyModUpdates: (instanceId: string, updates: Array<{ filename: string; downloadUrl: string; newFilename: string; contentType?: string }>) => Promise<Array<{ filename: string; success: boolean; error?: string }>>
       }
       modpack: {
         install: (name: string, projectId: string, versionId?: string) => Promise<import('@refract/core').Instance>

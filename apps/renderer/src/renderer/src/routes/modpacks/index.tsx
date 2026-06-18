@@ -19,7 +19,7 @@ type ContentStatus = 'installed' | 'update' | null
 
 const TABS: Array<{ type: ContentTab; label: string; showLoader: boolean }> = [
   { type: 'modpack',     label: 'Modpacks',      showLoader: true  },
-  { type: 'resourcepack',label: 'Resource Packs', showLoader: true  },
+  { type: 'resourcepack',label: 'Resource Packs', showLoader: false },
   { type: 'shader',      label: 'Shaders',        showLoader: false },
   { type: 'datapack',    label: 'Data Packs',     showLoader: false },
 ]
@@ -1310,8 +1310,16 @@ function ContentBrowser() {
             onChange={inst => {
               setActiveInstance(inst)
               if (inst) {
-                setVersion(inst.minecraftVersion)
-                setLoader(tabInfo.showLoader ? inst.modLoader ?? null : null)
+                // Resource packs aren't bound to a mod loader (Modrinth tags them
+                // "minecraft") and rarely to one exact MC version, so constraining the
+                // catalog to the instance's core/version hides almost everything. Leave
+                // the filters open for resource packs — the instance is still used for
+                // install target and installed/update status — and only narrow the
+                // catalog for the other content types.
+                if (tab !== 'resourcepack') {
+                  setVersion(inst.minecraftVersion)
+                  setLoader(tabInfo.showLoader ? inst.modLoader ?? null : null)
+                }
               }
             }}
           />

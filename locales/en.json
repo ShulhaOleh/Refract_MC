@@ -195,7 +195,7 @@
   },
   "content": {
     "title": "Content Browser",
-    "subtitle": "Browse modpacks, resource packs, shaders, and data packs from Modrinth.",
+    "subtitle": "Browse modpacks, resource packs, shaders, and data packs from Modrinth/CurseForge and FTB.",
     "tabModpack": "Modpacks",
     "tabResourcepack": "Resource Packs",
     "tabShader": "Shaders",
