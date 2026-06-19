@@ -150,18 +150,18 @@ function AvatarBlock({ compact }: { compact: boolean }) {
   }
 
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 6px 12px', borderBottom:'1px solid var(--sb-line)' }}>
+    <div style={{ display:'flex', alignItems:'center', gap:10, minHeight:52, padding:'6px 6px 12px', borderBottom:'1px solid var(--sb-line)' }}>
       {avatar}
-      <div style={{ minWidth:0, flex:1 }}>
-        <div style={{ fontSize:14, fontWeight:600, color:'var(--ink)', lineHeight:1.3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+      <div style={{ minWidth:0, flex:1, display:'flex', flexDirection:'column', justifyContent:'center', alignSelf:'stretch' }}>
+        <div style={{ fontSize:14, fontWeight:600, color:'var(--ink)', lineHeight:'18px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
           {account ? account.username : t.sidebar.guest}
         </div>
-        <div style={{ fontSize:11, color: account?.canPlayMinecraft ? 'var(--grass)' : 'var(--gold)', lineHeight:1.4 }}>
+        <div style={{ fontSize:11, color: account?.canPlayMinecraft ? 'var(--grass)' : 'var(--gold)', lineHeight:'14px' }}>
           <AvatarStatus account={account} />
         </div>
       </div>
       {account && (
-        <button onClick={signOut} title={t.sidebar.signOut} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--ink-4)', padding:4, display:'flex', opacity:.7 }}>
+        <button onClick={signOut} title={t.sidebar.signOut} style={{ width:28, height:28, background:'none', border:'none', cursor:'pointer', color:'var(--ink-4)', padding:0, display:'flex', alignItems:'center', justifyContent:'center', opacity:.7, flexShrink:0 }}>
           <SignOutIcon />
         </button>
       )}

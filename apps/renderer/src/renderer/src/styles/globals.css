@@ -742,6 +742,13 @@ select.ni-input { appearance: none; cursor: pointer; padding-right: 38px; }
   min-width: 0;
 }
 
+.theme-card-controls {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .theme-card-title {
   min-width: 0;
   overflow: hidden;
@@ -786,8 +793,6 @@ select.ni-input { appearance: none; cursor: pointer; padding-right: 38px; }
 }
 
 .theme-card-action {
-  position: absolute;
-  top: 7px;
   display: grid;
   place-items: center;
   border-radius: var(--radius-sm);
@@ -797,13 +802,20 @@ select.ni-input { appearance: none; cursor: pointer; padding-right: 38px; }
   filter: none !important;
 }
 
+.theme-card > .theme-card-action {
+  display: none;
+}
+
+.theme-card-controls .theme-card-action {
+  position: static;
+}
+
 .theme-card-action:hover {
   color: var(--ink);
   background: var(--surface);
 }
 
 .theme-card-edit {
-  right: 32px;
   height: 20px;
   padding: 0 6px;
   font-size: 9px;
@@ -812,7 +824,6 @@ select.ni-input { appearance: none; cursor: pointer; padding-right: 38px; }
 }
 
 .theme-card-delete {
-  right: 7px;
   width: 20px;
   height: 20px;
   font-size: 14px;

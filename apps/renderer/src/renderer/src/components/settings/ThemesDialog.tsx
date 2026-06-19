@@ -150,7 +150,33 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
       >
         <div className="theme-card-head">
           <span className="theme-card-title">{theme.name}</span>
-          {active && <span className="theme-active-pill">ACTIVE</span>}
+          <span className="theme-card-controls">
+            {active && <span className="theme-active-pill">ACTIVE</span>}
+            {!builtin && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); startEdit(theme) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); startEdit(theme) } }}
+                title="Edit theme"
+                className="theme-card-action theme-card-edit"
+              >
+                EDIT
+              </span>
+            )}
+            {!builtin && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); removeCustomTheme(theme.id) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); removeCustomTheme(theme.id) } }}
+                title="Delete theme"
+                className="theme-card-action theme-card-delete"
+              >
+                ×
+              </span>
+            )}
+          </span>
         </div>
         <div className="theme-swatch-row">
           {SWATCH_KEYS.map((k) => (
@@ -163,18 +189,6 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
             className="theme-bg-thumb"
             style={{ backgroundImage: `linear-gradient(rgba(0,0,0,.20), rgba(0,0,0,.20)), ${cssUrl(theme.backgroundImage)}` }}
           />
-        )}
-        {!builtin && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); startEdit(theme) }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); startEdit(theme) } }}
-            title="Edit theme"
-            className="theme-card-action theme-card-edit"
-          >
-            EDIT
-          </span>
         )}
         {!builtin && (
           <span
