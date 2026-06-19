@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type React from 'react'
 import { analyticsAvailable, api, type AppConfig, type SafeAccount } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
@@ -46,8 +47,8 @@ function ConfirmActionModal({
   onCancel: () => void
   onConfirm: () => void
 }) {
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:220, background:'rgba(0,0,0,.72)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={e => { if (e.target === e.currentTarget && !busy) onCancel() }}>
+  const modal = (
+    <div style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(0,0,0,.72)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={e => { if (e.target === e.currentTarget && !busy) onCancel() }}>
       <div style={{ width:380, maxWidth:'100%', background:'var(--surface)', borderRadius:'var(--radius)', padding:18, display:'grid', gap:12 }}>
         <div style={{ fontSize:15, fontWeight:700, color:'var(--lava)' }}>{action.title}</div>
         <div style={{ fontSize:13, lineHeight:1.5, color:'var(--ink-3)' }}>{action.body}</div>
@@ -60,6 +61,8 @@ function ConfirmActionModal({
       </div>
     </div>
   )
+
+  return createPortal(modal, document.body)
 }
 
 function Settings() {
@@ -321,7 +324,7 @@ function Settings() {
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1fr) 360px', gap:18 }}>
+      <div className="settings-page-grid" style={{ display:'grid', gridTemplateColumns:'minmax(0, 1fr) 360px', gap:18 }}>
         <div style={{ display:'grid', gap:14 }}>
           <Panel title={t.settings.appearance}>
             <div style={{ display:'grid', gap:12 }}>
@@ -949,16 +952,16 @@ function Settings() {
         </div>
       )}
 
-      {toast && (
+      {toast && createPortal((
         <div style={{
           position:'fixed', bottom:44, left:'50%', transform:'translateX(-50%)',
           padding:'10px 18px', background:'var(--surface-2)', border:'1px solid var(--border-r)',
           borderRadius:'var(--radius)', boxShadow:'0 8px 24px rgba(0,0,0,.5)',
-          color:'var(--ink)', fontSize:13, zIndex:50,
+          color:'var(--ink)', fontSize:13, zIndex:10000,
         }}>
           {toast}
         </div>
-      )}
+      ), document.body)}
 
       <ThemesDialog open={themesOpen} onOpenChange={setThemesOpen} />
     </div>

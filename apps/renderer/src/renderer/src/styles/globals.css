@@ -661,12 +661,13 @@ select.ni-input { appearance: none; cursor: pointer; padding-right: 38px; }
 .theme-overlay {
   position: fixed;
   inset: 0;
-  z-index: 149;
+  z-index: 10000;
   background: rgba(0,0,0,.68);
   backdrop-filter: blur(6px);
 }
 
 .theme-dialog {
+  z-index: 10001;
   width: min(860px, calc(100vw - 32px));
 }
 
@@ -1015,6 +1016,35 @@ select.ni-input { appearance: none; cursor: pointer; padding-right: 38px; }
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+@media (max-width: 980px) {
+  .settings-page-grid,
+  .account-page-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .settings-page-grid > aside,
+  .account-page-grid > aside {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .settings-page-grid,
+  .account-page-grid {
+    gap: 12px !important;
+  }
+
+  .settings-page-grid :where(section, aside),
+  .account-page-grid :where(section, aside) {
+    border-radius: var(--radius-md) !important;
+  }
+
+  .account-page-grid > section > div:first-child {
+    align-items: flex-start !important;
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 620px) {

@@ -310,7 +310,7 @@ function Account() {
   }
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1.05fr) 360px', gap:18, minHeight:'100%' }}>
+    <div className="account-page-grid" style={{ display:'grid', gridTemplateColumns:'minmax(0, 1.05fr) 360px', gap:18, minHeight:'100%' }}>
       <input ref={avatarInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleAvatarPick} />
       <section style={{ background:'var(--surface)', border:'1px solid var(--border-r)', borderRadius:'var(--radius-lg)', overflow:'hidden' }}>
         <div style={{ padding:'18px 20px', borderBottom:'1px solid var(--line)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
