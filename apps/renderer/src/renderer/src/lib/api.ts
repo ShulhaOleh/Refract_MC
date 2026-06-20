@@ -590,6 +590,11 @@ function createTauriApi(): RefractAPI {
     analytics: {
       track: (name, params) => { void tinvoke('analytics_track', { name, params }).catch(() => {}) },
     },
+    activity: {
+      ...base.activity,
+      list: (() => tinvoke('activity_list')) as RefractAPI['activity']['list'],
+      add: ((label: string) => tinvoke('activity_add', { label })) as RefractAPI['activity']['add'],
+    },
     news: {
       list: (() => tinvoke('minecraft_news')) as RefractAPI['news']['list'],
       open: ((url: string) => tinvoke('open_minecraft_news_article', { url })) as RefractAPI['news']['open'],

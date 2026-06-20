@@ -1,3 +1,4 @@
+mod activity;
 mod analytics;
 mod auth;
 mod config;
@@ -37,6 +38,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             analytics::analytics_track,
+            activity::activity_list,
+            activity::activity_add,
             config::config_get,
             config::config_set,
             theme::theme_list,
