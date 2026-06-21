@@ -156,11 +156,14 @@ fn account_type(uuid: &str) -> Option<String> {
 #[tauri::command]
 pub async fn fetch_skin_texture_url(uuid: String) -> Option<String> {
     let id = uuid.replace('-', "");
-    let res = reqwest::get(format!(
-        "https://sessionserver.mojang.com/session/minecraft/profile/{id}"
-    ))
-    .await
-    .ok()?;
+    let client = reqwest::Client::new();
+    let res = client
+        .get(format!(
+            "https://sessionserver.mojang.com/session/minecraft/profile/{id}"
+        ))
+        .send()
+        .await
+        .ok()?;
     if !res.status().is_success() {
         return None;
     }
@@ -172,7 +175,21 @@ pub async fn fetch_skin_texture_url(uuid: String) -> Option<String> {
     let raw = prop["value"].as_str()?;
     let decoded = base64::engine::general_purpose::STANDARD.decode(raw).ok()?;
     let json: Value = serde_json::from_slice(&decoded).ok()?;
-    json["textures"]["SKIN"]["url"].as_str().map(String::from)
+    let texture_url = json["textures"]["SKIN"]["url"].as_str()?;
+    let texture_url = texture_url.replacen(
+        "http://textures.minecraft.net/",
+        "https://textures.minecraft.net/",
+        1,
+    );
+    let parsed = reqwest::Url::parse(&texture_url).ok()?;
+    if parsed.scheme() != "https" || parsed.host_str() != Some("textures.minecraft.net") {
+        return None;
+    }
+    let bytes = client.get(parsed).send().await.ok()?.bytes().await.ok()?;
+    Some(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(&bytes)
+    ))
 }
 
 /// Upload a skin PNG for a Microsoft account. Offline accounts signal OFFLINE_ONLY
