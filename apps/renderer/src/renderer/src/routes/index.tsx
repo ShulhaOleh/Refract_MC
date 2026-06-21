@@ -1130,6 +1130,9 @@ function Library() {
       activeLaunchIds.delete(instanceId)
       setLaunchingIds(prev => { const n = new Set(prev); n.delete(instanceId); return n })
       setRunningIds(prev => { const n = new Set(prev); n.delete(instanceId); return n })
+      // The exit watcher records the session's playtime before emitting, so
+      // refetch to refresh playtime totals and the daily streak.
+      void queryClient.invalidateQueries({ queryKey: ['instances'] })
       if (error || (typeof code === 'number' && code !== 0)) {
         api.mc.crashReport(instanceId)
           .then(report => {

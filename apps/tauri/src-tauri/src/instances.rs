@@ -357,6 +357,37 @@ pub fn update_instance(id: String, patch: Value) -> Result<Value, String> {
     Ok(existing)
 }
 
+/// Add a finished play session to the instance's lifetime total and to its
+/// per-day playtime log. The day key uses **local** time to match the streak
+/// computation in the renderer (`localDateKey`), so a late-evening session is
+/// logged on the right calendar day. Called from the launch exit watcher.
+pub fn record_playtime(id: String, seconds: u64) {
+    if seconds == 0 {
+        return;
+    }
+    let Some(mut inst) = get_instance_by_id(id.clone()) else {
+        return;
+    };
+    let Some(obj) = inst.as_object_mut() else {
+        return;
+    };
+
+    let prev_total = obj
+        .get("totalTimePlayed")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    obj.insert("totalTimePlayed".into(), json!(prev_total + seconds));
+
+    let day = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let log = obj.entry("playtimeLog").or_insert_with(|| json!({}));
+    if let Some(log_obj) = log.as_object_mut() {
+        let prev_day = log_obj.get(&day).and_then(Value::as_u64).unwrap_or(0);
+        log_obj.insert(day, json!(prev_day + seconds));
+    }
+
+    let _ = save_instance(&inst);
+}
+
 /// Open the instance's game directory in the OS file manager.
 /// shell.openPath). Creates it first if missing.
 #[tauri::command]

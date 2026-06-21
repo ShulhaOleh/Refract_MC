@@ -704,10 +704,13 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
     // notifies the renderer so the UI flips back from "running".
     let app_exit = app.clone();
     let id_exit = instance_id.clone();
+    let started = std::time::Instant::now();
     thread::spawn(move || {
         let code = child.wait().ok().and_then(|s| s.code()).unwrap_or(-1);
         pids().lock().unwrap().remove(&id_exit);
         crate::discord::clear_game_activity(&id_exit);
+        // Record the session so playtime totals and the daily streak update.
+        crate::instances::record_playtime(id_exit.clone(), started.elapsed().as_secs());
         let _ = app_exit.emit(
             "mc://exit",
             ExitPayload {
