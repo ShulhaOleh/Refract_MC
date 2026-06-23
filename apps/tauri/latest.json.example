@@ -1,11 +1,23 @@
 {
   "version": "1.2.0",
   "notes": "Describe what changed in this release.",
-  "pub_date": "2026-06-16T00:00:00Z",
+  "pub_date": "2026-06-23T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "PASTE_THE_FULL_CONTENTS_OF_Refract_1.2.0_x64-setup.exe.sig_HERE",
-      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_x64-setup.exe"
+      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_windows_x64-setup.exe"
+    },
+    "darwin-aarch64": {
+      "signature": "PASTE_THE_FULL_CONTENTS_OF_Refract_1.2.0_macos_aarch64.app.tar.gz.sig_HERE",
+      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_macos_aarch64.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "PASTE_THE_FULL_CONTENTS_OF_Refract_1.2.0_macos_x64.app.tar.gz.sig_HERE",
+      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_macos_x64.app.tar.gz"
+    },
+    "linux-x86_64": {
+      "signature": "PASTE_THE_FULL_CONTENTS_OF_Refract_1.2.0_linux_x64.AppImage.sig_HERE",
+      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_linux_x64.AppImage"
     }
   }
 }

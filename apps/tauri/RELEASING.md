@@ -34,10 +34,19 @@ Operational rules for the private key:
   generate a new keypair, replace `plugins.updater.pubkey`, commit it, and ship
   one manual installer so future updates trust the new public key.
 
-## 2. Build a signed installer
+## 2. Build signed installers
 
-Bump the version in `apps/tauri/src-tauri/tauri.conf.json` (and the renderer
-`package.json`), then build with the signing secrets in the environment:
+Bump the version in `apps/tauri/src-tauri/tauri.conf.json` and the package
+versions, then push a `v*.*.*` tag or run the `Release (Tauri)` workflow
+manually. The workflow builds release artifacts for:
+
+- Windows x64
+- macOS Apple Silicon
+- macOS Intel
+- Linux x64
+
+For local testing, build on the target OS with the signing secrets in the
+environment:
 
 ```powershell
 $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content "$HOME/.refract/updater.key" -Raw
@@ -45,36 +54,52 @@ $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "<your password>"
 pnpm build:signed   # run from apps/tauri
 ```
 
-For GitHub Actions, define repository secrets with the same names. The Tauri
-release workflow reads only those secrets and creates a draft release for review.
+For GitHub Actions, define repository secrets with the same names. The release
+workflow reads only those secrets and creates a draft release for review.
 
-Output (under `src-tauri/target/release/bundle/`):
-- `nsis/Refract_<version>_x64-setup.exe` — the installer
-- `nsis/Refract_<version>_x64-setup.exe.sig` — its signature (`createUpdaterArtifacts` is on)
+Output (under `src-tauri/target/release/bundle/`, depending on OS):
+
+- Windows: `nsis/*.exe`, `msi/*.msi`, plus `.sig` files
+- macOS: `dmg/*.dmg`, `macos/*.app.tar.gz`, plus `.sig` files
+- Linux: `appimage/*.AppImage`, `deb/*.deb`, `rpm/*.rpm`, plus `.sig` files
 
 ## 3. Publish to GitHub Releases
 
-Create a release on `RefractMC/Refract_MC` (tag e.g. `v1.1.4`) and upload:
-1. the `-setup.exe` installer
-2. a `latest.json` manifest:
+The `Release (Tauri)` workflow uploads platform installers and the generated
+`latest.json` updater manifest to the draft release. Review the assets, then
+publish the draft and mark it as the latest release.
+
+The generated manifest should contain every supported updater platform:
 
 ```json
 {
-  "version": "1.1.4",
+  "version": "1.2.0",
   "notes": "What changed…",
-  "pub_date": "2026-06-16T00:00:00Z",
+  "pub_date": "2026-06-23T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "<paste the FULL contents of the .sig file>",
-      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.1.4/Refract_1.1.4_x64-setup.exe"
+      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_windows_x64-setup.exe"
+    },
+    "darwin-aarch64": {
+      "signature": "<paste the FULL contents of the .sig file>",
+      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_macos_aarch64.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "<paste the FULL contents of the .sig file>",
+      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_macos_x64.app.tar.gz"
+    },
+    "linux-x86_64": {
+      "signature": "<paste the FULL contents of the .sig file>",
+      "url": "https://github.com/RefractMC/Refract_MC/releases/download/v1.2.0/Refract_1.2.0_linux_x64.AppImage"
     }
   }
 }
 ```
 
-The app's endpoint is `…/releases/latest/download/latest.json`, so the manifest
-must live on the **latest** release. On next launch the app compares its version
-to `latest.json`, shows the banner, and updates on click.
+The app's endpoint is `…/releases/latest/download/latest.json`, so the release
+with the manifest must be the **latest** release. On next launch the app compares
+its version to `latest.json`, shows the banner, and updates on click.
 
 ## #26 - upgrading existing installs to the Tauri build
 
