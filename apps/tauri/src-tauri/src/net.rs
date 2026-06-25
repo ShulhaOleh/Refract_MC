@@ -40,6 +40,7 @@ pub const JAVA_HOSTS: &[&str] = &[
     "github.com",
     "objects.githubusercontent.com",
     "github-releases.githubusercontent.com",
+    "release-assets.githubusercontent.com",
 ];
 
 #[derive(Clone, Copy)]
