@@ -293,7 +293,11 @@ pub fn create_instance(input: Value) -> Result<Value, String> {
     obj.entry("mods").or_insert(json!([]));
     obj.insert("isInstalled".into(), json!(false));
 
-    let id = inst["id"].as_str().unwrap().to_string();
+    let id = obj
+        .get("id")
+        .and_then(Value::as_str)
+        .ok_or("instance has no id")?
+        .to_string();
     if let Some(custom) = inst.get("customPath").and_then(Value::as_str) {
         let mut reg = read_registry();
         reg.retain(|r| r.id != id);
@@ -309,7 +313,7 @@ pub fn create_instance(input: Value) -> Result<Value, String> {
             .unwrap_or("instance");
         let folder = unique_folder_name(name, None);
         inst.as_object_mut()
-            .unwrap()
+            .ok_or("input is not an object")?
             .insert("folderName".into(), json!(folder));
     }
     save_instance(&inst)?;
@@ -339,14 +343,16 @@ pub fn update_instance(id: String, patch: Value) -> Result<Value, String> {
                     }
                     existing
                         .as_object_mut()
-                        .unwrap()
+                        .ok_or("stored instance is not an object")?
                         .insert("folderName".into(), json!(new_folder));
                 }
             }
         }
     }
 
-    let obj = existing.as_object_mut().unwrap();
+    let obj = existing
+        .as_object_mut()
+        .ok_or("stored instance is not an object")?;
     for (k, v) in patch_obj {
         if k == "id" || k == "createdAt" {
             continue;

@@ -110,7 +110,9 @@ fn substitute(s: &str, vars: &HashMap<String, String>) -> String {
                 }
             }
         }
-        let ch = s[i..].chars().next().unwrap();
+        let Some(ch) = s[i..].chars().next() else {
+            break;
+        };
         out.push(ch);
         i += ch.len_utf8();
     }
@@ -451,7 +453,11 @@ pub fn is_running(instance_id: String) -> bool {
 
 #[tauri::command]
 pub fn stop_minecraft(instance_id: String) -> Result<(), String> {
-    let pid = pids().lock().unwrap().get(&instance_id).copied();
+    let pid = pids()
+        .lock()
+        .map_err(|_| "Minecraft process tracker is unavailable.".to_string())?
+        .get(&instance_id)
+        .copied();
     if let Some(pid) = pid {
         #[cfg(windows)]
         {
@@ -461,7 +467,10 @@ pub fn stop_minecraft(instance_id: String) -> Result<(), String> {
         }
         #[cfg(not(windows))]
         let _ = Command::new("kill").arg(pid.to_string()).output();
-        pids().lock().unwrap().remove(&instance_id);
+        pids()
+            .lock()
+            .map_err(|_| "Minecraft process tracker is unavailable.".to_string())?
+            .remove(&instance_id);
         crate::discord::clear_game_activity(&instance_id);
     }
     Ok(())
@@ -698,7 +707,10 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
     if let Some(err) = child.stderr.take() {
         pump(app.clone(), instance_id.clone(), err, "stderr");
     }
-    pids().lock().unwrap().insert(instance_id.clone(), pid);
+    pids()
+        .lock()
+        .map_err(|_| "Minecraft process tracker is unavailable.".to_string())?
+        .insert(instance_id.clone(), pid);
 
     let _ = instances::update_instance(
         instance_id.clone(),
@@ -720,7 +732,9 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
     let started = std::time::Instant::now();
     thread::spawn(move || {
         let code = child.wait().ok().and_then(|s| s.code()).unwrap_or(-1);
-        pids().lock().unwrap().remove(&id_exit);
+        if let Ok(mut pids) = pids().lock() {
+            pids.remove(&id_exit);
+        }
         crate::discord::clear_game_activity(&id_exit);
         // Record the session so playtime totals and the daily streak update.
         crate::instances::record_playtime(id_exit.clone(), started.elapsed().as_secs());

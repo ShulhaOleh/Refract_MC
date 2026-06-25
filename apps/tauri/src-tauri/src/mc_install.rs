@@ -35,26 +35,31 @@ struct InstallGuard {
 }
 
 impl InstallGuard {
-    fn new(instance_id: &str) -> Self {
-        let mut state = cancel_state().lock().unwrap();
+    fn new(instance_id: &str) -> Result<Self, String> {
+        let mut state = cancel_state()
+            .lock()
+            .map_err(|_| "Install cancellation state is unavailable.".to_string())?;
         state.active.insert(instance_id.to_string());
         state.cancelled.remove(instance_id);
-        Self {
+        Ok(Self {
             instance_id: instance_id.to_string(),
-        }
+        })
     }
 }
 
 impl Drop for InstallGuard {
     fn drop(&mut self) {
-        let mut state = cancel_state().lock().unwrap();
-        state.active.remove(&self.instance_id);
-        state.cancelled.remove(&self.instance_id);
+        if let Ok(mut state) = cancel_state().lock() {
+            state.active.remove(&self.instance_id);
+            state.cancelled.remove(&self.instance_id);
+        }
     }
 }
 
 fn check_cancelled(instance_id: &str) -> Result<(), String> {
-    let state = cancel_state().lock().unwrap();
+    let state = cancel_state()
+        .lock()
+        .map_err(|_| "Install cancellation state is unavailable.".to_string())?;
     if state.cancelled.contains(instance_id) {
         Err(INSTALL_CANCELLED.into())
     } else {
@@ -64,7 +69,9 @@ fn check_cancelled(instance_id: &str) -> Result<(), String> {
 
 #[tauri::command]
 pub fn cancel_install(instance_id: Option<String>) {
-    let mut state = cancel_state().lock().unwrap();
+    let Ok(mut state) = cancel_state().lock() else {
+        return;
+    };
     if let Some(id) = instance_id.filter(|id| !id.is_empty()) {
         state.cancelled.insert(id);
     } else {
@@ -330,7 +337,7 @@ pub async fn install_minecraft(
     mod_loader_version: Option<String>,
 ) -> Result<(), String> {
     let iid = instance_id.as_str();
-    let _guard = InstallGuard::new(iid);
+    let _guard = InstallGuard::new(iid)?;
 
     // 1. Version JSON
     emit(&app, iid, "Fetching version data", 0, 1);
@@ -438,9 +445,9 @@ pub async fn install_minecraft(
             .map(|m| {
                 m.values()
                     .filter_map(|o| {
-                        o["hash"]
-                            .as_str()
-                            .map(|h| (h[..2].to_string(), h.to_string()))
+                        o["hash"].as_str().and_then(|h| {
+                            h.get(..2).map(|prefix| (prefix.to_string(), h.to_string()))
+                        })
                     })
                     .collect()
             })

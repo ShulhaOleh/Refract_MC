@@ -79,8 +79,9 @@ fn subdirs(dir: impl AsRef<Path>) -> Vec<PathBuf> {
 }
 
 fn loader_name(raw: Option<&str>) -> Option<String> {
-    match raw?.to_ascii_lowercase().as_str() {
-        "forge" | "neoforge" | "fabric" | "quilt" => Some(raw.unwrap().to_ascii_lowercase()),
+    let lower = raw?.to_ascii_lowercase();
+    match lower.as_str() {
+        "forge" | "neoforge" | "fabric" | "quilt" => Some(lower),
         _ => None,
     }
 }
