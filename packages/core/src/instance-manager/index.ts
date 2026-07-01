@@ -24,6 +24,13 @@ export interface Instance {
   javaPath?: string
   javaArgs?: string
   memoryMb: number
+  // Game window + hooks. Nullable so a patch can clear them — undefined keys are
+  // dropped from the JSON patch and would leave the old value in place.
+  resolutionWidth?: number | null   // custom game window size; both must be set to apply
+  resolutionHeight?: number | null
+  fullscreen?: boolean | null
+  preLaunchCommand?: string | null  // run in the game dir before launch; a non-zero exit aborts
+  postExitCommand?: string | null   // run in the game dir after the game exits
   iconPath?: string
   groupId?: string
   lastPlayed?: string

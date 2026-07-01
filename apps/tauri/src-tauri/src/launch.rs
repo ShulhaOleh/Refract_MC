@@ -298,6 +298,8 @@ fn build_command(
     memory_mb: u64,
     java_args: Option<&str>,
     auth: &Auth,
+    resolution: Option<(u64, u64)>,
+    fullscreen: bool,
 ) -> Vec<String> {
     let asset_index = version_json["assetIndex"]["id"]
         .as_str()
@@ -334,8 +336,9 @@ fn build_command(
     put("user_type", auth.user_type.clone());
     put("user_properties", "{}".into());
     put("version_type", "release".into());
-    put("resolution_width", "854".into());
-    put("resolution_height", "480".into());
+    let (res_w, res_h) = resolution.unwrap_or((854, 480));
+    put("resolution_width", res_w.to_string());
+    put("resolution_height", res_h.to_string());
     put("clientid", auth.client_id.clone());
 
     let mut jvm_base = vec![
@@ -393,6 +396,21 @@ fn build_command(
             (vec!["-cp".into(), classpath.clone()], vec![])
         };
 
+    // Window overrides: appended explicitly instead of via the JSON's
+    // has_custom_resolution/is_fullscreen feature rules, so they also work for
+    // legacy minecraftArguments versions that have no feature-gated args.
+    let mut game_args = game_args;
+    if fullscreen {
+        if !game_args.iter().any(|a| a == "--fullscreen") {
+            game_args.push("--fullscreen".into());
+        }
+    } else if resolution.is_some() && !game_args.iter().any(|a| a == "--width") {
+        game_args.push("--width".into());
+        game_args.push(res_w.to_string());
+        game_args.push("--height".into());
+        game_args.push(res_h.to_string());
+    }
+
     let mut cmd = vec![java_exe.to_string()];
     cmd.append(&mut jvm_base);
     cmd.extend(jvm_args);
@@ -402,6 +420,53 @@ fn build_command(
     cmd.push(main_class);
     cmd.extend(game_args);
     cmd
+}
+
+// ── pre/post-launch hooks ────────────────────────────────────────────────────
+
+/// Run a user hook command through the system shell in `cwd`, with Prism-style
+/// INST_* environment variables. Output is streamed to the instance console as
+/// `mc://log`; returns the exit code.
+fn run_hook(
+    app: &AppHandle,
+    instance_id: &str,
+    label: &str,
+    command: &str,
+    cwd: &Path,
+    env: &[(String, String)],
+) -> Result<i32, String> {
+    #[cfg(target_os = "windows")]
+    let mut cmd = {
+        let mut c = Command::new("cmd");
+        c.args(["/C", command]);
+        c
+    };
+    #[cfg(not(target_os = "windows"))]
+    let mut cmd = {
+        let mut c = Command::new("sh");
+        c.args(["-c", command]);
+        c
+    };
+    crate::procutil::hide_window(&mut cmd);
+    let output = cmd
+        .current_dir(cwd)
+        .envs(env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
+        .output()
+        .map_err(|e| format!("{label} command failed to start: {e}"))?;
+    let code = output.status.code().unwrap_or(-1);
+    for (bytes, stream) in [(&output.stdout, "stdout"), (&output.stderr, "stderr")] {
+        for line in String::from_utf8_lossy(bytes).lines() {
+            let _ = app.emit(
+                "mc://log",
+                LogPayload {
+                    instance_id: instance_id.to_string(),
+                    line: format!("[{label}] {line}\n"),
+                    stream: stream.to_string(),
+                },
+            );
+        }
+    }
+    Ok(code)
 }
 
 // ── log/exit payloads + streaming ────────────────────────────────────────────
@@ -673,6 +738,58 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
         .or_else(|| cfg.get("defaultMemoryMb").and_then(Value::as_u64))
         .unwrap_or(2048);
     let java_args = instance.get("javaArgs").and_then(Value::as_str);
+    let resolution = match (
+        instance.get("resolutionWidth").and_then(Value::as_u64),
+        instance.get("resolutionHeight").and_then(Value::as_u64),
+    ) {
+        (Some(w), Some(h)) if w > 0 && h > 0 => Some((w, h)),
+        _ => None,
+    };
+    let fullscreen = instance
+        .get("fullscreen")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    // Hook environment, Prism-compatible names.
+    let hook_env: Vec<(String, String)> = vec![
+        ("INST_ID".into(), instance_id.clone()),
+        ("INST_NAME".into(), instance_name.clone()),
+        ("INST_DIR".into(), inst_dir.to_string_lossy().into_owned()),
+        (
+            "INST_MC_DIR".into(),
+            game_dir.to_string_lossy().into_owned(),
+        ),
+        ("INST_JAVA".into(), java_exe.clone()),
+    ];
+    let pre_cmd = instance
+        .get("preLaunchCommand")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+    let post_cmd = instance
+        .get("postExitCommand")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+
+    if let Some(pre) = pre_cmd {
+        let app2 = app.clone();
+        let id2 = instance_id.clone();
+        let dir2 = game_dir.clone();
+        let env2 = hook_env.clone();
+        let code = tauri::async_runtime::spawn_blocking(move || {
+            run_hook(&app2, &id2, "pre-launch", &pre, &dir2, &env2)
+        })
+        .await
+        .map_err(|e| e.to_string())??;
+        if code != 0 {
+            return Err(format!(
+                "Pre-launch command exited with code {code} — launch aborted."
+            ));
+        }
+    }
 
     let cmd = build_command(
         &mc_version,
@@ -687,6 +804,8 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
         memory_mb,
         java_args,
         &auth,
+        resolution,
+        fullscreen,
     );
     let (exe, args) = cmd.split_first().ok_or("empty launch command")?;
 
@@ -738,6 +857,9 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
         crate::discord::clear_game_activity(&id_exit);
         // Record the session so playtime totals and the daily streak update.
         crate::instances::record_playtime(id_exit.clone(), started.elapsed().as_secs());
+        if let Some(post) = post_cmd {
+            let _ = run_hook(&app_exit, &id_exit, "post-exit", &post, &game_dir, &hook_env);
+        }
         let _ = app_exit.emit(
             "mc://exit",
             ExitPayload {
@@ -793,6 +915,8 @@ mod tests {
             1024,
             None,
             &auth(),
+            None,
+            false,
         );
 
         assert!(cmd

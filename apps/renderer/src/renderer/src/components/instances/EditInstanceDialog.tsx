@@ -64,6 +64,11 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
   const [groupId, setGroupId]         = useState('')
   const [javaPath, setJavaPath]       = useState('')
   const [javaArgs, setJavaArgs]       = useState('')
+  const [resWidth, setResWidth]       = useState('')
+  const [resHeight, setResHeight]     = useState('')
+  const [fullscreen, setFullscreen]   = useState(false)
+  const [preLaunchCmd, setPreLaunchCmd] = useState('')
+  const [postExitCmd, setPostExitCmd]   = useState('')
   const [javas, setJavas]             = useState<JavaInstallation[]>([])
   const [loading, setLoading]         = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -93,6 +98,11 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
       setGroupId(instance.groupId ?? '')
       setJavaPath(instance.javaPath ?? '')
       setJavaArgs(instance.javaArgs ?? '')
+      setResWidth(instance.resolutionWidth ? String(instance.resolutionWidth) : '')
+      setResHeight(instance.resolutionHeight ? String(instance.resolutionHeight) : '')
+      setFullscreen(instance.fullscreen ?? false)
+      setPreLaunchCmd(instance.preLaunchCommand ?? '')
+      setPostExitCmd(instance.postExitCommand ?? '')
       setConfirmDelete(false)
       api.mc.java().then(setJavas).catch(() => setJavas([]))
     }
@@ -143,6 +153,11 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
         groupId: groupId.trim() || undefined,
         javaPath: javaPath || undefined,
         javaArgs: javaArgs.trim() || undefined,
+        resolutionWidth: Number(resWidth) > 0 ? Number(resWidth) : null,
+        resolutionHeight: Number(resHeight) > 0 ? Number(resHeight) : null,
+        fullscreen: fullscreen || null,
+        preLaunchCommand: preLaunchCmd.trim() || null,
+        postExitCommand: postExitCmd.trim() || null,
         ...(versionChanged && instance.isInstalled ? { isInstalled: false } : {}),
       })
       onOpenChange(false)
@@ -450,6 +465,71 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                       Clear
                     </Button>
                   )}
+                </div>
+              </div>
+
+              {/* Game window */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+                  {t.editInst.gameWindow}
+                </label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    className="ni-input"
+                    type="number" min={1} step={1}
+                    value={resWidth}
+                    onChange={e => setResWidth(e.target.value)}
+                    placeholder={`${t.editInst.windowWidth} (854)`}
+                    disabled={fullscreen}
+                    style={{ width: 130 }}
+                    autoComplete="off"
+                  />
+                  <span style={{ color: 'var(--ink-4)', fontSize: 12 }}>×</span>
+                  <input
+                    className="ni-input"
+                    type="number" min={1} step={1}
+                    value={resHeight}
+                    onChange={e => setResHeight(e.target.value)}
+                    placeholder={`${t.editInst.windowHeight} (480)`}
+                    disabled={fullscreen}
+                    style={{ width: 130 }}
+                    autoComplete="off"
+                  />
+                  <label className="ni-check" style={{ marginLeft: 6 }}>
+                    <input className="ni-check-input" type="checkbox" checked={fullscreen} onChange={e => setFullscreen(e.target.checked)} />
+                    <span className="ni-checkmark-box">
+                      <svg className="ni-checkmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 5 5 9-11"/></svg>
+                    </span>
+                    <span className="ni-check-label">{t.editInst.fullscreen}</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Launch hooks */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+                  {t.editInst.hooks}
+                </label>
+                <input
+                  className="ni-input"
+                  type="text"
+                  value={preLaunchCmd}
+                  onChange={e => setPreLaunchCmd(e.target.value)}
+                  placeholder={t.editInst.preLaunch}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <input
+                  className="ni-input"
+                  type="text"
+                  value={postExitCmd}
+                  onChange={e => setPostExitCmd(e.target.value)}
+                  placeholder={t.editInst.postExit}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <div style={{ fontSize: 10, color: 'var(--ink-4)', lineHeight: 1.5 }}>
+                  {t.editInst.hookHint}
                 </div>
               </div>
 
