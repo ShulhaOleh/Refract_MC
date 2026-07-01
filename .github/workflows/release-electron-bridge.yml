@@ -41,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.inputs.tag }}
         run: |
-          $installer = Get-ChildItem "apps/electron-bridge/dist" -Filter "Refract Setup *.exe" | Select-Object -First 1
+          $installer = Get-ChildItem "apps/electron-bridge/dist" -Filter "Refract-Setup-*.exe" | Select-Object -First 1
           if (-not $installer) {
             throw "Bridge installer was not found."
           }

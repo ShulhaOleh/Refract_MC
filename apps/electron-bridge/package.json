@@ -37,6 +37,7 @@
       "icon": "../tauri/src-tauri/icons/icon.ico"
     },
     "nsis": {
+      "artifactName": "Refract-Setup-${version}.${ext}",
       "oneClick": true,
       "perMachine": false,
       "allowElevation": true,
