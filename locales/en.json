@@ -482,6 +482,8 @@
     "backing":         "…",
     "copyIp":          "Copy IP",
     "copied":          "Copied!",
+    "join":            "Join",
+    "play":            "Play",
     "openViewer":      "Open in viewer ↗",
     "profiles":        "Profiles",
     "saveProfile":     "+ Save Profile",

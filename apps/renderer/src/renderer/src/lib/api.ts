@@ -7,6 +7,7 @@ import { logger } from './logger'
 import { fetchMinecraftNews } from '../../../shared/minecraft-news'
 
 export type RefractAPI = Window['api']
+export type QuickPlayTarget = { kind: 'server'; address: string } | { kind: 'world'; name: string }
 export type SafeAccount = Awaited<ReturnType<RefractAPI['auth']['accounts']>>[number]
 export type DeviceLogin = Awaited<ReturnType<RefractAPI['auth']['microsoftBegin']>>
 export type AppConfig = Awaited<ReturnType<RefractAPI['config']['get']>>
@@ -933,7 +934,7 @@ function createTauriApi(): RefractAPI {
       install: ((instanceId: string, versionId: string, versionUrl: string, modLoader?: string, modLoaderVersion?: string) =>
         tinvoke('install_minecraft', { instanceId, versionId, versionUrl, modLoader, modLoaderVersion })) as RefractAPI['mc']['install'],
       cancelInstall: ((instanceId?: string) => tinvoke('cancel_install', { instanceId })) as RefractAPI['mc']['cancelInstall'],
-      launch: ((instanceId: string) => tinvoke('launch_minecraft', { instanceId })) as RefractAPI['mc']['launch'],
+      launch: ((instanceId: string, quickPlay?: QuickPlayTarget) => tinvoke('launch_minecraft', { instanceId, quickPlay })) as RefractAPI['mc']['launch'],
       stop: ((instanceId: string) => tinvoke('stop_minecraft', { instanceId })) as RefractAPI['mc']['stop'],
       isRunning: ((instanceId: string) => tinvoke('is_running', { instanceId })) as RefractAPI['mc']['isRunning'],
       worlds: ((instanceId: string) => tinvoke('mc_worlds', { instanceId })) as RefractAPI['mc']['worlds'],

@@ -275,6 +275,14 @@ fn tokenize(input: &str) -> Vec<String> {
     tokens
 }
 
+/// Launch straight into a server or singleplayer world (Prism-style Quick Play).
+#[derive(serde::Deserialize, Clone)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum QuickPlay {
+    Server { address: String },
+    World { name: String },
+}
+
 struct Auth {
     username: String,
     uuid: String,
@@ -300,6 +308,7 @@ fn build_command(
     auth: &Auth,
     resolution: Option<(u64, u64)>,
     fullscreen: bool,
+    quick_play: Option<&QuickPlay>,
 ) -> Vec<String> {
     let asset_index = version_json["assetIndex"]["id"]
         .as_str()
@@ -396,10 +405,42 @@ fn build_command(
             (vec!["-cp".into(), classpath.clone()], vec![])
         };
 
-    // Window overrides: appended explicitly instead of via the JSON's
-    // has_custom_resolution/is_fullscreen feature rules, so they also work for
-    // legacy minecraftArguments versions that have no feature-gated args.
+    // Quick Play: modern versions (1.20+) take --quickPlayMultiplayer /
+    // --quickPlaySingleplayer; older ones only support joining a server via
+    // --server/--port. Support is detected from the version JSON's game args.
     let mut game_args = game_args;
+    if let Some(qp) = quick_play {
+        let supports_quick_play = version_json["arguments"]["game"]
+            .to_string()
+            .contains("quickPlayMultiplayer");
+        match qp {
+            QuickPlay::Server { address } => {
+                if supports_quick_play {
+                    game_args.push("--quickPlayMultiplayer".into());
+                    game_args.push(address.clone());
+                } else {
+                    let (host, port) = match address.rsplit_once(':') {
+                        Some((h, p)) if p.chars().all(|c| c.is_ascii_digit()) => {
+                            (h.to_string(), p.to_string())
+                        }
+                        _ => (address.clone(), "25565".to_string()),
+                    };
+                    game_args.push("--server".into());
+                    game_args.push(host);
+                    game_args.push("--port".into());
+                    game_args.push(port);
+                }
+            }
+            QuickPlay::World { name } => {
+                // Pre-1.20 has no way to join a world from the command line;
+                // launch normally in that case (checked before spawn).
+                if supports_quick_play {
+                    game_args.push("--quickPlaySingleplayer".into());
+                    game_args.push(name.clone());
+                }
+            }
+        }
+    }
     if fullscreen {
         if !game_args.iter().any(|a| a == "--fullscreen") {
             game_args.push("--fullscreen".into());
@@ -542,7 +583,11 @@ pub fn stop_minecraft(instance_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(), String> {
+pub async fn launch_minecraft(
+    app: AppHandle,
+    instance_id: String,
+    quick_play: Option<QuickPlay>,
+) -> Result<(), String> {
     if is_running(instance_id.clone()) {
         return Err("Instance is already running.".into());
     }
@@ -651,6 +696,15 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .ok_or("Version JSON missing. Please reinstall.")?;
+
+    if let Some(QuickPlay::World { .. }) = &quick_play {
+        if !version_json["arguments"]["game"]
+            .to_string()
+            .contains("quickPlayMultiplayer")
+        {
+            return Err("Joining a world directly requires Minecraft 1.20 or newer.".into());
+        }
+    }
 
     // Loaders launch via their saved overlay profile. Forge/NeoForge overlays are
     // produced by the installer processor step.
@@ -806,6 +860,7 @@ pub async fn launch_minecraft(app: AppHandle, instance_id: String) -> Result<(),
         &auth,
         resolution,
         fullscreen,
+        quick_play.as_ref(),
     );
     let (exe, args) = cmd.split_first().ok_or("empty launch command")?;
 
@@ -917,6 +972,7 @@ mod tests {
             &auth(),
             None,
             false,
+            None,
         );
 
         assert!(cmd

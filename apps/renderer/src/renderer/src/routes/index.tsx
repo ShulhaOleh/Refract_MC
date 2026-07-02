@@ -14,7 +14,7 @@ import { ServersDialog } from '@/components/instances/ServersDialog'
 import { InstallProgress } from '@/components/minecraft/InstallProgress'
 import { Button } from '@/components/ui/Button'
 import { useInstances, useCreateInstance, useUpdateInstance, useDeleteInstance } from '@/hooks/use-instances'
-import { analyticsAvailable, api, type AppConfig } from '@/lib/api'
+import { analyticsAvailable, api, type AppConfig, type QuickPlayTarget } from '@/lib/api'
 import { getFilePath } from '@/lib/file-path'
 import { registerNativeDropTarget } from '@/lib/native-drop'
 
@@ -1002,7 +1002,7 @@ function Library() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [noLicenseTarget, setNoLicenseTarget] = useState<Instance | null>(null)
-  const [ramWarning, setRamWarning] = useState<{ instance: Instance; availableMb: number } | null>(null)
+  const [ramWarning, setRamWarning] = useState<{ instance: Instance; availableMb: number; quickPlay?: QuickPlayTarget } | null>(null)
   const [syncOpen, setSyncOpen] = useState(false)
   const [externalInstances, setExternalInstances] = useState<ExternalInstance[] | null>(null)
   const [externalScanning, setExternalScanning] = useState(false)
@@ -1236,7 +1236,7 @@ function Library() {
     }
   }
 
-  async function handleLaunch(instance: Instance, opts?: { skipRamCheck?: boolean }) {
+  async function handleLaunch(instance: Instance, opts?: { skipRamCheck?: boolean; quickPlay?: QuickPlayTarget }) {
     if (!hasProfile) {
       setLaunchToast(t.home.signInFirst)
       setTimeout(() => setLaunchToast(null), 3600)
@@ -1262,7 +1262,7 @@ function Library() {
     if (!opts?.skipRamCheck) {
       const availableMb = await api.system.availableRamMb().catch(() => null)
       if (availableMb !== null && instance.memoryMb > availableMb) {
-        setRamWarning({ instance, availableMb })
+        setRamWarning({ instance, availableMb, quickPlay: opts?.quickPlay })
         return
       }
     }
@@ -1274,7 +1274,7 @@ function Library() {
     setRunningIds(prev => new Set([...prev, instance.id]))
     setConsoleOpen(instance.id)
     try {
-      await api.mc.launch(instance.id)
+      await api.mc.launch(instance.id, opts?.quickPlay)
       void recordActivity(`Launched "${instance.name}"`)
     } catch (e) {
       activeLaunchIds.delete(instance.id)
@@ -2044,7 +2044,7 @@ function Library() {
             .catch(() => {})
         }}
         onInstanceUpdated={() => queryClient.invalidateQueries({ queryKey: ['instances'] })}
-        onLaunch={modsTarget ? () => handleLaunch(modsTarget) : undefined}
+        onLaunch={modsTarget ? (quickPlay?: QuickPlayTarget) => handleLaunch(modsTarget, { quickPlay }) : undefined}
         isRunning={modsTarget ? runningIds.has(modsTarget.id) : false}
         onEdit={modsTarget ? () => setEditTarget(modsTarget) : undefined}
       />
@@ -2097,7 +2097,7 @@ function Library() {
         <LowMemoryModal
           neededMb={ramWarning.instance.memoryMb}
           availableMb={ramWarning.availableMb}
-          onLaunch={() => { const inst = ramWarning.instance; setRamWarning(null); void handleLaunch(inst, { skipRamCheck: true }) }}
+          onLaunch={() => { const w = ramWarning; setRamWarning(null); void handleLaunch(w.instance, { skipRamCheck: true, quickPlay: w.quickPlay }) }}
           onClose={() => setRamWarning(null)}
         />
       )}

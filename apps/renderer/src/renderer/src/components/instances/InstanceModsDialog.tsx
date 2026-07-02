@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { api, onExportProgress, pickModFiles, supportsFilePicker } from '@/lib/api'
+import { api, onExportProgress, pickModFiles, supportsFilePicker, type QuickPlayTarget } from '@/lib/api'
 import { compressImage } from '@/lib/image'
 import { getFilePath } from '@/lib/file-path'
 import type { Instance } from '@refract/core'
@@ -45,7 +45,7 @@ interface Props {
   onOpenChange: (v: boolean) => void
   onUpdateApplied?: (instanceId: string) => void
   onInstanceUpdated?: () => void
-  onLaunch?: () => void
+  onLaunch?: (quickPlay?: QuickPlayTarget) => void
   isRunning?: boolean
   onEdit?: () => void
 }
@@ -704,6 +704,7 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
                   if (!instance) return
                   try { await api.mc.backupWorld(instance.id, w.name) } catch { /* ignore */ }
                 }}
+                onPlay={onLaunch && !isRunning ? () => { onLaunch({ kind: 'world', name: w.name }); onOpenChange(false) } : undefined}
               />
             ))
           ) : tab === 'screenshots' ? (
@@ -724,7 +725,11 @@ export function InstanceModsDialog({ instance, open, onOpenChange, onUpdateAppli
             servers.length === 0 ? (
               <EmptyMsg msg={EMPTY_MSG.servers} sub={td.emptyServersSub} />
             ) : servers.map(s => (
-              <ServerRow key={s.ip} server={s} />
+              <ServerRow
+                key={s.ip}
+                server={s}
+                onJoin={onLaunch && !isRunning ? () => { onLaunch({ kind: 'server', address: s.ip }); onOpenChange(false) } : undefined}
+              />
             ))
           ) : tab === 'updates' ? (
             modUpdates.length === 0 ? (
@@ -829,7 +834,7 @@ function pingColor(ms: number): string {
   return 'var(--lava)'
 }
 
-function ServerRow({ server }: { server: ServerEntry }) {
+function ServerRow({ server, onJoin }: { server: ServerEntry; onJoin?: () => void }) {
   const t = useT()
   const [copied, setCopied] = useState(false)
   const [ping, setPing] = useState<PingResult>('loading')
@@ -881,6 +886,17 @@ function ServerRow({ server }: { server: ServerEntry }) {
       >
         {copied ? t.instanceDetail.copied : t.instanceDetail.copyIp}
       </Button>
+      {onJoin && (
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onJoin}
+          title="Launch the game straight into this server"
+          style={{ fontSize: 11 }}
+        >
+          {t.instanceDetail.join}
+        </Button>
+      )}
     </div>
   )
 }
@@ -895,7 +911,7 @@ function EmptyMsg({ msg, sub }: { msg: string; sub: string }) {
   )
 }
 
-function WorldRow({ world, isBusy, onDelete, onBackup }: { world: WorldEntry; isBusy: boolean; onDelete: () => void; onBackup?: () => void }) {
+function WorldRow({ world, isBusy, onDelete, onBackup, onPlay }: { world: WorldEntry; isBusy: boolean; onDelete: () => void; onBackup?: () => void; onPlay?: () => void }) {
   const t = useT()
   const td = t.instanceDetail
   const [confirm, setConfirm] = useState(false)
@@ -916,6 +932,18 @@ function WorldRow({ world, isBusy, onDelete, onBackup }: { world: WorldEntry; is
         </div>
       </div>
       <div style={{ display:'flex', gap:5 }}>
+        {onPlay && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onPlay}
+            disabled={isBusy}
+            title="Launch the game straight into this world (MC 1.20+)"
+            style={{ fontSize: 11, padding: '3px 10px' }}
+          >
+            {td.play}
+          </Button>
+        )}
         {onBackup && (
           <Button
             variant="outline"
