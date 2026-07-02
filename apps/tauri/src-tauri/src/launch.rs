@@ -587,6 +587,7 @@ pub async fn launch_minecraft(
     app: AppHandle,
     instance_id: String,
     quick_play: Option<QuickPlay>,
+    offline: Option<bool>,
 ) -> Result<(), String> {
     if is_running(instance_id.clone()) {
         return Err("Instance is already running.".into());
@@ -625,7 +626,11 @@ pub async fn launch_minecraft(
         .unwrap_or("")
         .to_string();
 
-    let auth = if acc_type == "microsoft" || acc_type == "yggdrasil" {
+    // Play Offline: skip the token refresh entirely and launch a licensed
+    // account with the offline placeholder token — the game starts without
+    // network, but multiplayer servers and skins won't work for the session.
+    let force_offline = offline.unwrap_or(false);
+    let auth = if (acc_type == "microsoft" || acc_type == "yggdrasil") && !force_offline {
         let (token, xuid) = auth::mc_token(&uuid).await.map_err(|e| {
             if e == "AUTH_EXPIRED" {
                 if acc_type == "yggdrasil" {

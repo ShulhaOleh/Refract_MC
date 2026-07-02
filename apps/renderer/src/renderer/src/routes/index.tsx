@@ -831,6 +831,34 @@ function LowMemoryModal({ neededMb, availableMb, onLaunch, onClose }: { neededMb
   )
 }
 
+function PlayOfflineModal({ instanceName, onPlayOffline, onClose }: { instanceName: string; onPlayOffline: () => void; onClose: () => void }) {
+  const t = useT()
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 210, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 440, background: 'var(--surface)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gold)', letterSpacing: '.02em' }}>{t.home.offlineTitle}</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-4)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
+        </div>
+        <div style={{ padding: '24px 22px' }}>
+          <p style={{ fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.6, margin: '0 0 22px' }}>
+            {t.home.offlineBody(instanceName)}
+          </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={onPlayOffline} style={primaryBtnStyle}>{t.home.offlinePlay}</button>
+            <button onClick={onClose} style={secondaryBtnStyle}>{t.home.offlineCancel}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function NewGroupDialog({ existing, onCancel, onCreate }: { existing: string[]; onCancel: () => void; onCreate: (name: string) => void }) {
   const t = useT()
   const [name, setName] = useState('')
@@ -1003,6 +1031,7 @@ function Library() {
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [noLicenseTarget, setNoLicenseTarget] = useState<Instance | null>(null)
   const [ramWarning, setRamWarning] = useState<{ instance: Instance; availableMb: number; quickPlay?: QuickPlayTarget } | null>(null)
+  const [offlineOffer, setOfflineOffer] = useState<{ instance: Instance; quickPlay?: QuickPlayTarget } | null>(null)
   const [syncOpen, setSyncOpen] = useState(false)
   const [externalInstances, setExternalInstances] = useState<ExternalInstance[] | null>(null)
   const [externalScanning, setExternalScanning] = useState(false)
@@ -1236,7 +1265,7 @@ function Library() {
     }
   }
 
-  async function handleLaunch(instance: Instance, opts?: { skipRamCheck?: boolean; quickPlay?: QuickPlayTarget }) {
+  async function handleLaunch(instance: Instance, opts?: { skipRamCheck?: boolean; quickPlay?: QuickPlayTarget; offline?: boolean }) {
     if (!hasProfile) {
       setLaunchToast(t.home.signInFirst)
       setTimeout(() => setLaunchToast(null), 3600)
@@ -1274,7 +1303,7 @@ function Library() {
     setRunningIds(prev => new Set([...prev, instance.id]))
     setConsoleOpen(instance.id)
     try {
-      await api.mc.launch(instance.id, opts?.quickPlay)
+      await api.mc.launch(instance.id, opts?.quickPlay, opts?.offline)
       void recordActivity(`Launched "${instance.name}"`)
     } catch (e) {
       activeLaunchIds.delete(instance.id)
@@ -1286,6 +1315,12 @@ function Library() {
         setLaunchToast(t.home.sessionExpired)
         setTimeout(() => setLaunchToast(null), 4000)
         navigate({ to: '/account' })
+        return
+      }
+      // Auth failed for connectivity reasons (not a rejected refresh token):
+      // offer to start the game without signing in.
+      if (!opts?.offline && /request|network|connect|timed out|dns|resolve/i.test(msg)) {
+        setOfflineOffer({ instance, quickPlay: opts?.quickPlay })
         return
       }
       setLaunchToast(`Launch failed: ${msg}`)
@@ -2090,6 +2125,14 @@ function Library() {
         <NoLicenseModal
           instanceName={noLicenseTarget.name}
           onClose={() => setNoLicenseTarget(null)}
+        />
+      )}
+
+      {offlineOffer && (
+        <PlayOfflineModal
+          instanceName={offlineOffer.instance.name}
+          onPlayOffline={() => { const o = offlineOffer; setOfflineOffer(null); void handleLaunch(o.instance, { skipRamCheck: true, offline: true, quickPlay: o.quickPlay }) }}
+          onClose={() => setOfflineOffer(null)}
         />
       )}
 

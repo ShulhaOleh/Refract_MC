@@ -29,6 +29,7 @@ function build(l: Locale) {
       moveDesc:      (n: number)    => i(l.home.moveDesc, { n }),
       modCount:      (n: number)    => i(l.home.modCount, { n }),
       ramWarnBody:   (need: string, avail: string) => i(l.home.ramWarnBody, { need, avail }),
+      offlineBody:   (name: string) => i(l.home.offlineBody, { name }),
     },
 
     browse: {

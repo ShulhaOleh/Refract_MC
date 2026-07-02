@@ -283,7 +283,7 @@ declare global {
         isRunning: (instanceId: string) => Promise<boolean>
         install: (instanceId: string, versionId: string, versionUrl: string, modLoader?: string, modLoaderVersion?: string) => Promise<void>
         repair: (instanceId: string) => Promise<void>
-        launch: (instanceId: string, quickPlay?: { kind: 'server'; address: string } | { kind: 'world'; name: string }) => Promise<void>
+        launch: (instanceId: string, quickPlay?: { kind: 'server'; address: string } | { kind: 'world'; name: string }, offline?: boolean) => Promise<void>
         stop: (instanceId: string) => Promise<void>
         crashReport: (instanceId: string) => Promise<{ text: string; filename: string; path: string; modifiedAt: number } | null>
         uploadLog: (instanceId: string, source: 'latest' | 'crash' | 'launcher') => Promise<string>

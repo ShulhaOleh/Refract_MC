@@ -937,7 +937,7 @@ function createTauriApi(): RefractAPI {
       install: ((instanceId: string, versionId: string, versionUrl: string, modLoader?: string, modLoaderVersion?: string) =>
         tinvoke('install_minecraft', { instanceId, versionId, versionUrl, modLoader, modLoaderVersion })) as RefractAPI['mc']['install'],
       cancelInstall: ((instanceId?: string) => tinvoke('cancel_install', { instanceId })) as RefractAPI['mc']['cancelInstall'],
-      launch: ((instanceId: string, quickPlay?: QuickPlayTarget) => tinvoke('launch_minecraft', { instanceId, quickPlay })) as RefractAPI['mc']['launch'],
+      launch: ((instanceId: string, quickPlay?: QuickPlayTarget, offline?: boolean) => tinvoke('launch_minecraft', { instanceId, quickPlay, offline })) as RefractAPI['mc']['launch'],
       stop: ((instanceId: string) => tinvoke('stop_minecraft', { instanceId })) as RefractAPI['mc']['stop'],
       isRunning: ((instanceId: string) => tinvoke('is_running', { instanceId })) as RefractAPI['mc']['isRunning'],
       worlds: ((instanceId: string) => tinvoke('mc_worlds', { instanceId })) as RefractAPI['mc']['worlds'],
