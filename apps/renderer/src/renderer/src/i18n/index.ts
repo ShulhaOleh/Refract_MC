@@ -85,6 +85,7 @@ function build(l: Locale) {
         ? i(l.editInst.ramGb, { gb: String(mb / 1024) })
         : i(l.editInst.ramMb, { mb }),
       javaVersion: (v: number, vendor: string) => i(l.editInst.javaVersion, { v, vendor }),
+      optionsSyncDone: (files: string) => i(l.editInst.optionsSyncDone, { files }),
     },
 
     instanceDetail: {

@@ -154,6 +154,7 @@ pub fn run() {
             gamedata::mc_crash_report,
             gamedata::mc_upload_log,
             gamedata::mc_import_world,
+            gamedata::copy_game_options,
             shortcuts::create_play_shortcut,
             gamedata::mc_backup_world,
             gamedata::mc_screenshots,

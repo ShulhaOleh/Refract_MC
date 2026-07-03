@@ -385,6 +385,7 @@ function createBrowserApi(): RefractAPI {
       uploadLog: async () => { throw new Error('Log upload requires the desktop app.') },
       importWorld: async () => { throw new Error('World import requires the desktop app.') },
       createShortcut: async () => { throw new Error('Shortcuts require the desktop app.') },
+      copyGameOptions: async () => { throw new Error('Options sync requires the desktop app.') },
       worlds: async () => [],
       deleteWorld: async () => undefined,
       screenshots: async () => [],
@@ -947,6 +948,8 @@ function createTauriApi(): RefractAPI {
       uploadLog: ((instanceId: string, source: 'latest' | 'crash' | 'launcher') => tinvoke('mc_upload_log', { instanceId, source })) as RefractAPI['mc']['uploadLog'],
       createShortcut: ((instanceId: string, label: string, quickPlay?: QuickPlayTarget) =>
         tinvoke('create_play_shortcut', { instanceId, label, quickPlay })) as RefractAPI['mc']['createShortcut'],
+      copyGameOptions: ((fromId: string, toId: string, includeServers?: boolean) =>
+        tinvoke('copy_game_options', { fromId, toId, includeServers })) as RefractAPI['mc']['copyGameOptions'],
       importWorld: (async (instanceId: string) => {
         const src = await dialogOpen({ multiple: false, title: 'Select World Backup (.zip)', filters: [{ name: 'ZIP Archive', extensions: ['zip'] }] })
         if (typeof src !== 'string') return null

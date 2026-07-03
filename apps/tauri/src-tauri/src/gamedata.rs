@@ -128,6 +128,39 @@ pub fn mc_crash_report(instance_id: String) -> Option<CrashReport> {
     })
 }
 
+/// Copy game settings from one instance to another: options.txt plus the
+/// OptiFine/shader options files when present, and optionally servers.dat.
+/// Returns the list of files copied.
+#[tauri::command]
+pub fn copy_game_options(
+    from_id: String,
+    to_id: String,
+    include_servers: Option<bool>,
+) -> Result<Vec<String>, String> {
+    let src = instances::game_dir(&from_id);
+    let dst = instances::game_dir(&to_id);
+    fs::create_dir_all(&dst).map_err(|e| e.to_string())?;
+
+    let mut files = vec!["options.txt", "optionsof.txt", "optionsshaders.txt"];
+    if include_servers.unwrap_or(false) {
+        files.push("servers.dat");
+    }
+    let mut copied = Vec::new();
+    for name in files {
+        let from = src.join(name);
+        if from.is_file() {
+            fs::copy(&from, dst.join(name)).map_err(|e| format!("Couldn't copy {name}: {e}"))?;
+            copied.push(name.to_string());
+        }
+    }
+    if copied.is_empty() {
+        return Err(
+            "The source instance has no options.txt yet — launch it once first.".to_string(),
+        );
+    }
+    Ok(copied)
+}
+
 /// Import a world from a zip archive (e.g. a Refract world backup) into the
 /// instance's saves dir. Accepts level.dat at the archive root or inside a
 /// single top-level folder. Returns the created world folder name.

@@ -69,6 +69,11 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
   const [fullscreen, setFullscreen]   = useState(false)
   const [preLaunchCmd, setPreLaunchCmd] = useState('')
   const [postExitCmd, setPostExitCmd]   = useState('')
+  const [allInstances, setAllInstances] = useState<Instance[]>([])
+  const [optSource, setOptSource]       = useState('')
+  const [optServers, setOptServers]     = useState(false)
+  const [optBusy, setOptBusy]           = useState(false)
+  const [optMsg, setOptMsg]             = useState<{ ok: boolean; text: string } | null>(null)
   const [javas, setJavas]             = useState<JavaInstallation[]>([])
   const [loading, setLoading]         = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -104,7 +109,11 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
       setPreLaunchCmd(instance.preLaunchCommand ?? '')
       setPostExitCmd(instance.postExitCommand ?? '')
       setConfirmDelete(false)
+      setOptSource('')
+      setOptServers(false)
+      setOptMsg(null)
       api.mc.java().then(setJavas).catch(() => setJavas([]))
+      api.instance.list().then(setAllInstances).catch(() => setAllInstances([]))
     }
   }, [instance, open])
 
@@ -532,6 +541,64 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                   {t.editInst.hookHint}
                 </div>
               </div>
+
+              {/* Game options sync */}
+              {allInstances.filter(i => i.id !== instance?.id).length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+                    {t.editInst.optionsSync}
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: 1, minWidth: 160 }}>
+                      <select
+                        className="ni-input"
+                        value={optSource}
+                        onChange={e => { setOptSource(e.target.value); setOptMsg(null) }}
+                      >
+                        <option value="">{t.editInst.optionsSyncPick}</option>
+                        {allInstances.filter(i => i.id !== instance?.id).map(i => (
+                          <option key={i.id} value={i.id}>{i.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <label className="ni-check">
+                      <input className="ni-check-input" type="checkbox" checked={optServers} onChange={e => setOptServers(e.target.checked)} />
+                      <span className="ni-checkmark-box">
+                        <svg className="ni-checkmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 5 5 9-11"/></svg>
+                      </span>
+                      <span className="ni-check-label">{t.editInst.optionsSyncServers}</span>
+                    </label>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      type="button"
+                      disabled={!optSource || optBusy}
+                      onClick={async () => {
+                        if (!instance || !optSource || optBusy) return
+                        setOptBusy(true)
+                        setOptMsg(null)
+                        try {
+                          const files = await api.mc.copyGameOptions(optSource, instance.id, optServers)
+                          setOptMsg({ ok: true, text: t.editInst.optionsSyncDone(files.join(', ')) })
+                        } catch (e) {
+                          setOptMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
+                        } finally {
+                          setOptBusy(false)
+                        }
+                      }}
+                      style={{ fontSize: 11 }}
+                    >
+                      {optBusy ? t.editInst.optionsSyncCopying : t.editInst.optionsSyncCopy}
+                    </Button>
+                  </div>
+                  {optMsg && (
+                    <div style={{ fontSize: 11, color: optMsg.ok ? 'var(--grass)' : 'var(--lava)' }}>{optMsg.text}</div>
+                  )}
+                  <div style={{ fontSize: 10, color: 'var(--ink-4)', lineHeight: 1.5 }}>
+                    {t.editInst.optionsSyncHint}
+                  </div>
+                </div>
+              )}
 
               {/* Pin toggle */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
