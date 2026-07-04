@@ -608,7 +608,7 @@ function Settings() {
               </div>
 
               {/* Download needed Java versions */}
-              {([8, 17, 21] as const).map(major => {
+              {([8, 17, 21, 25] as const).map(major => {
                 const available = javas.some(j => j.version >= major && (major === 8 ? j.version < 17 : major === 17 ? j.version < 21 : true))
                 const downloading = javaDownloading.get(major)
                 if (available || (!downloading && javas.some(j => j.version === major))) return null

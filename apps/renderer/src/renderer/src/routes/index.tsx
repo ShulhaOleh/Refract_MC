@@ -209,11 +209,13 @@ function formatPlaytime(seconds: number): string {
 }
 
 function requiredJava(mcVersion: string): number {
-  const parts = mcVersion.split('.').map(Number)
-  const minor = parts[1] ?? 0
-  const patch = parts[2] ?? 0
-  if (minor >= 21 || (minor === 20 && patch >= 5)) return 21
-  if (minor >= 17) return 17
+  const nums = [...mcVersion.matchAll(/\d+/g)].map(match => Number(match[0]))
+  const major = nums[0] ?? 1
+  const minor = nums[1] ?? 0
+  const patch = nums[2] ?? 0
+  if (major >= 26) return 25
+  if (major === 1 && (minor >= 21 || (minor === 20 && patch >= 5))) return 21
+  if (major === 1 && minor >= 17) return 17
   return 8
 }
 

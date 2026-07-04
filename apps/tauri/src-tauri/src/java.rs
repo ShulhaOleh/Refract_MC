@@ -336,18 +336,42 @@ fn save_managed(list: &[Install]) -> Result<(), String> {
 /// MC version → required Java major (heuristic; the version JSON's own
 /// javaVersion.majorVersion is preferred at launch when present).
 fn required_for(mc_version: &str) -> u32 {
-    let parts: Vec<u32> = mc_version
-        .split('.')
-        .map(|p| p.parse().unwrap_or(0))
+    let nums: Vec<u32> = mc_version
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|p| !p.is_empty())
+        .filter_map(|p| p.parse().ok())
         .collect();
-    let minor = parts.get(1).copied().unwrap_or(0);
-    let patch = parts.get(2).copied().unwrap_or(0);
-    if minor >= 21 || (minor == 20 && patch >= 5) {
+    let major = nums.first().copied().unwrap_or(1);
+    let minor = nums.get(1).copied().unwrap_or(0);
+    let patch = nums.get(2).copied().unwrap_or(0);
+    if major >= 26 {
+        25
+    } else if major == 1 && (minor >= 21 || (minor == 20 && patch >= 5)) {
         21
-    } else if minor >= 17 {
+    } else if major == 1 && minor >= 17 {
         17
     } else {
         8
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::required_for;
+
+    #[test]
+    fn maps_current_release_versions_to_expected_java() {
+        assert_eq!(required_for("1.16.5"), 8);
+        assert_eq!(required_for("1.17"), 17);
+        assert_eq!(required_for("1.20.4"), 17);
+        assert_eq!(required_for("1.20.5"), 21);
+        assert_eq!(required_for("1.21.8"), 21);
+    }
+
+    #[test]
+    fn maps_modern_snapshot_names_to_java_25() {
+        assert_eq!(required_for("26.1 Snapshot 1"), 25);
+        assert_eq!(required_for("26.2 Snapshot 3"), 25);
     }
 }
 
