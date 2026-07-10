@@ -159,3 +159,40 @@ jobs:
           releaseAssetNamePattern: "Refract_[version]_[platform]_[arch][setup][ext]"
           args: ${{ matrix.args }} ${{ env.TAURI_SIGN_ARGS }}
 
+      # Version-less copies of the installers so download links never change
+      # (e.g. the mget one-line install). Uploaded alongside the versioned
+      # assets tauri-action already published; the updater manifest keeps
+      # pointing at the versioned ones.
+      - name: Upload stable-named release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          BUNDLE="apps/tauri/src-tauri/target/release/bundle"
+
+          stable() { # <built file glob> <stable name>
+            local src
+            src=$(compgen -G "$1" | head -n 1) || { echo "no match for $1" >&2; return 1; }
+            cp "$src" "$2"
+            gh release upload "$TAG" "$2" --clobber
+          }
+
+          case "${{ runner.os }}" in
+            Windows)
+              stable "$BUNDLE/nsis/Refract_*_x64-setup.exe" "Refract-Windows-x64.exe"
+              ;;
+            macOS)
+              if compgen -G "$BUNDLE/dmg/Refract_*_aarch64.dmg" > /dev/null; then
+                stable "$BUNDLE/dmg/Refract_*_aarch64.dmg" "Refract-macOS-arm64.dmg"
+              else
+                stable "$BUNDLE/dmg/Refract_*_x64.dmg" "Refract-macOS-x64.dmg"
+              fi
+              ;;
+            Linux)
+              stable "$BUNDLE/appimage/Refract_*_amd64.AppImage" "Refract-Linux-x86_64.AppImage"
+              stable "$BUNDLE/deb/Refract_*_amd64.deb" "Refract-Linux-amd64.deb"
+              ;;
+          esac
+
