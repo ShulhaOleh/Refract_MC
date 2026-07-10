@@ -312,7 +312,7 @@ function Settings() {
 
   return (
     <div style={{ display:'grid', gap:18 }}>
-      <div style={{ display:'flex', alignItems:'end', justifyContent:'space-between', gap:16 }}>
+      <div className="library-hero">
         <div>
           <h1 style={{ margin:0, color:'var(--ink)', fontSize:24, lineHeight:1.1 }}>{t.settings.title}</h1>
           <p style={{ margin:'6px 0 0', color:'var(--ink-3)', fontSize:13 }}>

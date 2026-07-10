@@ -188,14 +188,14 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
   }
 
   const loaderLabel = MOD_LOADERS.find(l => l.value === modLoader)?.label ?? 'Vanilla'
-  const displayName = name.trim() || 'Instance'
+  const displayName = name.trim() || t.editInst.instanceFallback
 
   return (
     <Dialog.Root open={open} onOpenChange={(v) => { if (!loading) onOpenChange(v) }}>
       <Dialog.Portal>
         <Dialog.Overlay style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 149 }} />
         <Dialog.Content
-          aria-label="Edit instance"
+          aria-label={t.editInst.title}
           className="ni-dialog"
           onEscapeKeyDown={() => { if (!loading) onOpenChange(false) }}
           onPointerDownOutside={() => { if (!loading) onOpenChange(false) }}
@@ -209,7 +209,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                 {displayName}
               </span>
             </div>
-            <button className="ni-close" onClick={() => { if (!loading) onOpenChange(false) }} aria-label="Close" type="button">
+            <button className="ni-close" onClick={() => { if (!loading) onOpenChange(false) }} aria-label={t.editInst.close} type="button">
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round">
                 <path d="M6 6l12 12M18 6L6 18"/>
               </svg>
@@ -222,7 +222,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
             {/* Left: live preview */}
             <aside className="ni-preview" style={{ padding: '22px 20px', background: 'var(--surface-2)', borderRight: '1px solid var(--border-r)', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
               <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-4)' }}>
-                Live Preview
+                {t.editInst.livePreview}
               </div>
 
               {/* Preview card — clickable to pick image */}
@@ -257,23 +257,23 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                     transition: 'opacity .14s',
                   }}>
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', color: '#fff', textTransform: 'uppercase' }}>
-                      {coverImage || instance?.iconPath ? 'Change' : 'Set Image'}
+                      {coverImage || instance?.iconPath ? t.editInst.changeImage : t.editInst.setImage}
                     </div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,.6)' }}>click to browse</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,.6)' }}>{t.editInst.clickToBrowse}</div>
                   </div>
                 </div>
 
                 {/* Card body */}
                 <div style={{ padding: '13px 14px 15px', display: 'flex', flexDirection: 'column', gap: 9 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-                  <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11.5, color: 'var(--ink-3)', letterSpacing: '.02em' }}>Minecraft {mcVersion}</div>
+                  <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11.5, color: 'var(--ink-3)', letterSpacing: '.02em' }}>{t.editInst.mcVersionLine(mcVersion)}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ni-p-deep, var(--accent-hi))', background: 'var(--ni-p-tint, var(--accent-tint))', border: '1px solid var(--ni-p-tint-2, var(--accent-tint))', borderRadius: 'var(--radius-sm)', padding: '3px 8px' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
                       {loaderLabel}
                     </span>
                     <span style={{ marginLeft: 'auto', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, color: 'var(--ink-3)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius-sm)', padding: '3px 8px', background: 'var(--bg)' }}>
-                      {memGB} GB
+                      {t.editInst.gbChip(memGB)}
                     </span>
                   </div>
                 </div>
@@ -313,7 +313,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                     <span className="ni-checkmark-box">
                       <svg className="ni-checkmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 5 5 9-11"/></svg>
                     </span>
-                    <span className="ni-check-label">Snapshots</span>
+                    <span className="ni-check-label">{t.editInst.snapshots}</span>
                   </label>
                 </div>
                 <div style={{ position: 'relative' }}>
@@ -356,7 +356,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
               {(modLoader === 'fabric' || modLoader === 'quilt' || modLoader === 'forge' || modLoader === 'neoforge') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
-                    {modLoader === 'neoforge' ? 'NeoForge' : modLoader === 'fabric' ? 'Fabric' : modLoader === 'quilt' ? 'Quilt' : 'Forge'} version
+                    {t.editInst.loaderVersion(modLoader === 'neoforge' ? 'NeoForge' : modLoader === 'fabric' ? 'Fabric' : modLoader === 'quilt' ? 'Quilt' : 'Forge')}
                   </label>
                   <div style={{ position: 'relative' }}>
                     <select
@@ -365,10 +365,10 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                       onChange={e => setLoaderVersion(e.target.value)}
                       disabled={loaderVersionsLoading}
                     >
-                      <option value="">{loaderVersionsLoading ? 'Loading…' : 'Latest (auto)'}</option>
+                      <option value="">{loaderVersionsLoading ? t.editInst.loadingList : t.editInst.latestAuto}</option>
                       {loaderVersions.map(v => (
                         <option key={v} value={v}>
-                          {v}{v === loaderVersionRecommended ? ' ★ recommended' : ''}
+                          {v}{v === loaderVersionRecommended ? t.editInst.recommendedStar : ''}
                         </option>
                       ))}
                     </select>
@@ -385,7 +385,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                   <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
                     {t.editInst.memory(String(memGB))}
                   </label>
-                  <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--ni-p-deep, var(--accent-hi))', fontWeight: 600 }}>{memGB} GB allocated</span>
+                  <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--ni-p-deep, var(--accent-hi))', fontWeight: 600 }}>{t.editInst.memAllocated(memGB)}</span>
                 </div>
                 <input
                   className="ni-slider"
@@ -397,7 +397,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                 <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 3 }}>
                   {memPresets.map(g => (
                     <button key={g} type="button" className="ni-preset" aria-pressed={memGB === g ? 'true' : 'false'} onClick={() => setMemGB(g)}>
-                      {g}G
+                      {t.editInst.gigShort(g)}
                     </button>
                   ))}
                 </div>
@@ -460,10 +460,10 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                   spellCheck={false}
                 />
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, color: 'var(--ink-4)', alignSelf: 'center', flexShrink: 0, letterSpacing: '.10em', fontWeight: 600 }}>PRESETS:</span>
+                  <span style={{ fontSize: 10, color: 'var(--ink-4)', alignSelf: 'center', flexShrink: 0, letterSpacing: '.10em', fontWeight: 600 }}>{t.editInst.presets}</span>
                   {[
-                    { label: "Aikar's", args: '-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -XX:+DisableExplicitGC -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1' },
-                    { label: 'Low-end', args: '-XX:+UseSerialGC -XX:TieredStopAtLevel=1' },
+                    { label: t.editInst.presetAikars, args: '-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -XX:+DisableExplicitGC -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1' },
+                    { label: t.editInst.presetLowEnd, args: '-XX:+UseSerialGC -XX:TieredStopAtLevel=1' },
                   ].map(p => (
                     <Button key={p.label} variant="secondary" size="sm" type="button" onClick={() => setJavaArgs(p.args)} style={{ fontSize: 10, padding: '2px 8px', height: 'auto', borderRadius: 'var(--radius-sm)', fontWeight: 600 }}>
                       {p.label}
@@ -471,7 +471,7 @@ export function EditInstanceDialog({ instance, open, onOpenChange, onSave, onDel
                   ))}
                   {javaArgs && (
                     <Button variant="outline" size="sm" type="button" onClick={() => setJavaArgs('')} style={{ fontSize: 10, padding: '2px 8px', height: 'auto', background: 'none', color: 'var(--ink-4)', borderRadius: 'var(--radius-sm)' }}>
-                      Clear
+                      {t.editInst.clearBtn}
                     </Button>
                   )}
                 </div>

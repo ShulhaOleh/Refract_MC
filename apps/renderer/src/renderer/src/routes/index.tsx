@@ -263,10 +263,10 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
   if (instance.isInstalled && updateAvailable) statusChips.push({ label: t.home.update, tone: 'good' })
   if (instance.isInstalled && updateCount > 0) statusChips.push({ label: t.home.modCount(updateCount), tone: 'warn' })
   if (instance.isInstalled && !javaOk) statusChips.push({ label: t.home.missingJava, tone: 'warn' })
-  if (instance.isInstalled && blockReason === 'no-profile') statusChips.push({ label: 'No account', tone: 'warn' })
-  if (instance.isInstalled && blockReason === 'no-license') statusChips.push({ label: 'License needed', tone: 'warn' })
+  if (instance.isInstalled && blockReason === 'no-profile') statusChips.push({ label: t.home.statusNoAccount, tone: 'warn' })
+  if (instance.isInstalled && blockReason === 'no-license') statusChips.push({ label: t.home.licenseRequired, tone: 'warn' })
   if (statusChips.length === 0) {
-    statusChips.push(instance.isInstalled ? { label: 'Installed', tone: 'info' } : { label: 'Needs install', tone: 'neutral' })
+    statusChips.push(instance.isInstalled ? { label: t.home.statusInstalled, tone: 'info' } : { label: t.home.statusNeedsInstall, tone: 'neutral' })
   }
   useEffect(() => registerNativeDropTarget(
     instance.id,
@@ -326,7 +326,7 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
         )}
         {!selectionMode && bannerHover && !dragOver && (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#fff', letterSpacing: '.08em', background: 'rgba(0,0,0,.5)', padding: '5px 14px', borderRadius: 'var(--radius-sm)' }}>VIEW DETAILS</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#fff', letterSpacing: '.08em', background: 'rgba(0,0,0,.5)', padding: '5px 14px', borderRadius: 'var(--radius-sm)' }}>{t.home.viewDetails}</div>
           </div>
         )}
         {dragOver && (
@@ -454,7 +454,7 @@ function InstanceCard({ instance, onLaunch, onEdit, onConsole, onMods, onOpenFol
               variant="secondary"
               size="icon"
               onClick={onOpenFolder}
-              title="Open instance folder"
+              title={t.home.openFolderTip}
               style={{ width: 32, height: 32, flexShrink: 0, fontSize: 14 }}
             >
               📁
@@ -503,6 +503,7 @@ function EmptyState({ onOpen }: { onOpen: () => void }) {
 /// Uploads a log to mclo.gs, copies the share link and opens it. A second click
 /// after a successful upload just re-opens the link.
 function UploadLogButton({ instanceId, source, style }: { instanceId: string; source: 'latest' | 'crash'; style?: React.CSSProperties }) {
+  const t = useT()
   const [state, setState] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [url, setUrl] = useState<string | null>(null)
   async function upload() {
@@ -520,15 +521,15 @@ function UploadLogButton({ instanceId, source, style }: { instanceId: string; so
       setTimeout(() => setState('idle'), 3000)
     }
   }
-  const label = state === 'uploading' ? 'Uploading…'
-    : state === 'done' ? 'Link copied ↗'
-    : state === 'error' ? 'Upload failed'
-    : 'Upload to mclo.gs'
+  const label = state === 'uploading' ? t.home.uploading
+    : state === 'done' ? t.home.linkCopied
+    : state === 'error' ? t.home.uploadFailed
+    : t.home.uploadLog
   return (
     <button
       onClick={upload}
       disabled={state === 'uploading'}
-      title="Upload the log to mclo.gs and copy a shareable link"
+      title={t.home.uploadLogTip}
       style={{
         height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700,
         background: state === 'done' ? 'var(--grass)' : 'var(--surface-2)',
@@ -597,33 +598,33 @@ function CrashReportModal({
           <div>
             <span style={{ fontSize: 14, fontWeight: 700, color: '#ff6b6b', letterSpacing: '.02em' }}>{t.home.crashTitle}</span>
             <span style={{ fontSize: 12, color: 'var(--ink-4)', marginLeft: 12 }}>{instanceName}</span>
-            {copied && <span style={{ fontSize: 11, color: 'var(--grass)', marginLeft: 10 }}>Copied to clipboard</span>}
+            {copied && <span style={{ fontSize: 11, color: 'var(--grass)', marginLeft: 10 }}>{t.home.copiedClipboard}</span>}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={copyNow} style={{ height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700, background: copied ? 'var(--grass)' : 'var(--surface-2)', color: copied ? '#fff' : 'var(--ink)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer', transition: 'background .15s' }}>
-              {copied ? 'Copied!' : 'Copy report'}
+              {copied ? t.home.copied : t.home.copyReport}
             </button>
             <button onClick={copyDiagnosticsNow} style={{ height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700, background: diagnosticCopied ? 'var(--grass)' : 'var(--surface-2)', color: diagnosticCopied ? '#fff' : 'var(--ink)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer', transition: 'background .15s' }}>
-              {diagnosticCopied ? 'Copied!' : 'Copy diagnostics'}
+              {diagnosticCopied ? t.home.copied : t.home.copyDiagnostics}
             </button>
             <UploadLogButton instanceId={instanceId} source={reportFileName ? 'crash' : 'latest'} />
-            <button onClick={onOpenConsole} style={{ height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700, background: 'var(--surface-2)', color: 'var(--ink)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer' }}>Open logs</button>
-            <button onClick={onOpenFolder} style={{ height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700, background: 'var(--surface-2)', color: 'var(--ink)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer' }}>Open folder</button>
+            <button onClick={onOpenConsole} style={{ height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700, background: 'var(--surface-2)', color: 'var(--ink)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer' }}>{t.home.openLogs}</button>
+            <button onClick={onOpenFolder} style={{ height: 30, padding: '0 12px', fontSize: 11, fontWeight: 700, background: 'var(--surface-2)', color: 'var(--ink)', border: '1px solid var(--border-r)', borderRadius: 3, cursor: 'pointer' }}>{t.home.openFolder}</button>
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-4)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px' }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10, fontSize: 11, color: 'var(--ink-3)' }}>
-            <span>Exit code: {code ?? 'unknown'}</span>
-            {error && <span>Error: {error}</span>}
-            {reportFileName && <span>Report: {reportFileName}</span>}
+            <span>{t.home.exitCode(code ?? t.home.unknownError)}</span>
+            {error && <span>{t.home.errorLine(error)}</span>}
+            {reportFileName && <span>{t.home.reportLine(reportFileName)}</span>}
           </div>
           {lastLines.length > 0 && (
             <>
-              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--ink-4)', letterSpacing: '.08em', marginBottom: 4 }}>LAST GAME OUTPUT</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--ink-4)', letterSpacing: '.08em', marginBottom: 4 }}>{t.home.lastGameOutput}</div>
               <pre style={{ fontFamily: 'monospace', fontSize: 10, color: '#a0a0a0', margin: '0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.4, background: '#111', padding: '8px 10px', borderRadius: 3, maxHeight: 120, overflowY: 'auto' }}>{lastLines.join('\n')}</pre>
               <div style={{ margin: '10px 0', borderTop: '1px solid rgba(255,255,255,.08)' }} />
-              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--ink-4)', letterSpacing: '.08em', marginBottom: 4 }}>CRASH REPORT</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--ink-4)', letterSpacing: '.08em', marginBottom: 4 }}>{t.home.crashReportHead}</div>
             </>
           )}
           <pre style={{ fontFamily: 'monospace', fontSize: 11, color: '#e8e8e8', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.5 }}>{text}</pre>
@@ -1174,7 +1175,7 @@ function Library() {
       updatingModpackRef.current = false
       setModpackUpdating(null)
       if (error) {
-        setLaunchToast(`Update failed: ${error}`)
+        setLaunchToast(t.home.updateFailed(error))
         setTimeout(() => setLaunchToast(null), 5000)
       } else {
         setLaunchToast(t.home.modpackUpdated)
@@ -1188,13 +1189,13 @@ function Library() {
 
   async function handleUpdateModpack(inst: Instance) {
     updatingModpackRef.current = true
-    setModpackUpdating({ step: 'Starting…', percent: 0 })
+    setModpackUpdating({ step: t.home.starting, percent: 0 })
     try {
       await api.modpack.update(inst.id)
     } catch (e) {
       updatingModpackRef.current = false
       setModpackUpdating(null)
-      setLaunchToast(`Update failed: ${e instanceof Error ? e.message : 'Unknown error'}`)
+      setLaunchToast(t.home.updateFailed(e instanceof Error ? e.message : t.home.unknownError))
       setTimeout(() => setLaunchToast(null), 5000)
     }
   }
@@ -1223,13 +1224,13 @@ function Library() {
     const unsubDone = api.modpack.onDone(({ projectId, instanceId, error }) => {
       setFileImport(prev => {
         if (prev?.importId !== projectId) return prev
-        if (error) return { ...prev, status: 'error', step: 'Import failed', error }
-        if (instanceId) return { ...prev, status: 'done', step: 'Ready to play', percent: 100, instanceId }
-        return { ...prev, status: 'done', step: 'Import complete', percent: 100 }
+        if (error) return { ...prev, status: 'error', step: t.home.importFailedShort, error }
+        if (instanceId) return { ...prev, status: 'done', step: t.home.readyToPlay, percent: 100, instanceId }
+        return { ...prev, status: 'done', step: t.home.importComplete, percent: 100 }
       })
       if (instanceId) {
         void queryClient.invalidateQueries({ queryKey: ['instances'] })
-        void recordActivity('Imported modpack from file')
+        void recordActivity(t.home.activityImportedFile)
       }
     })
     return () => { unsubProg(); unsubDone() }
@@ -1237,13 +1238,13 @@ function Library() {
 
   async function handleImportFile(filePath: string): Promise<void> {
     const importId = `file-import-${Date.now()}`
-    const name = filePath.replace(/\\/g, '/').split('/').pop()?.replace(/\.(mrpack|zip)$/i, '') ?? 'Imported Pack'
-    setFileImport({ importId, step: 'Starting...', percent: 0, name, filePath, status: 'importing' })
+    const name = filePath.replace(/\\/g, '/').split('/').pop()?.replace(/\.(mrpack|zip)$/i, '') ?? t.home.importedPack
+    setFileImport({ importId, step: t.home.starting, percent: 0, name, filePath, status: 'importing' })
     try {
       await api.modpack.installFromFile(filePath, name, importId)
     } catch (e) {
       setFileImport(prev => prev?.importId === importId
-        ? { ...prev, status: 'error', step: 'Import failed', error: e instanceof Error ? e.message : 'Unknown error' }
+        ? { ...prev, status: 'error', step: t.home.importFailedShort, error: e instanceof Error ? e.message : t.home.unknownError }
         : prev
       )
     }
@@ -1263,7 +1264,7 @@ function Library() {
     try {
       await api.mc.install(instance.id, ver.id, ver.url, instance.modLoader, instance.modLoaderVersion)
     } catch (e) {
-      setLaunchToast(`Install failed: ${e instanceof Error ? e.message : 'Unknown error'}`)
+      setLaunchToast(t.home.installFailedWith(e instanceof Error ? e.message : t.home.unknownError))
       setTimeout(() => setLaunchToast(null), 4000)
       setInstalling(null)
     }
@@ -1312,7 +1313,7 @@ function Library() {
     } catch (e) {
       activeLaunchIds.delete(instance.id)
       setRunningIds(prev => { const n = new Set(prev); n.delete(instance.id); return n })
-      const msg = e instanceof Error ? e.message : 'Unknown error'
+      const msg = e instanceof Error ? e.message : t.home.unknownError
       // A failed launch must leave a trace the user can find later — the toast
       // is transient, and a pre-spawn failure produces no game log at all.
       logger.error('launch', `Launch failed for "${instance.name}": ${msg}`)
@@ -1330,7 +1331,7 @@ function Library() {
         setOfflineOffer({ instance, quickPlay: opts?.quickPlay })
         return
       }
-      setLaunchToast(`Launch failed: ${msg}`)
+      setLaunchToast(t.home.launchFailed(msg))
       setTimeout(() => setLaunchToast(null), 10000)
     } finally {
       launchingRef.current = false
@@ -1369,7 +1370,7 @@ function Library() {
           const launcherLogs = await api.log.read(40).catch(() => [])
           const instance = instances.find(i => i.id === instanceId)
           const fallbackText = [
-            error ? `Minecraft crashed: ${error}` : `Minecraft exited with code ${code}.`,
+            error ? t.home.crashedWith(error) : t.home.exitedWith(code ?? t.home.unknownError),
             '',
             lastLines.length > 0 ? lastLines.join('\n') : 'No recent game output was captured.',
           ].join('\n')
@@ -1497,7 +1498,7 @@ function Library() {
         <div>
           <div className="library-kicker">{greeting(t)}</div>
           <div className="library-title">
-            <span>Ready for</span>
+            <span>{t.home.readyFor}</span>
             <strong>{activeAccount?.username ?? t.sidebar.guest}</strong>
           </div>
           <div className="library-status" style={{ color: hasProfile && canPlayMinecraft ? 'var(--grass)' : 'var(--gold)' }}>
@@ -1523,7 +1524,7 @@ function Library() {
               type="text"
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setCarouselPage(0) }}
-              placeholder="Search instances…"
+              placeholder={t.home.searchInstances}
             />
             <select
               className="launcher-select"
@@ -1531,7 +1532,7 @@ function Library() {
               onChange={e => { setFilterLoader(e.target.value); setCarouselPage(0) }}
               style={{ color: filterLoader ? 'var(--ink)' : 'var(--ink-4)' }}
             >
-              <option value="">All loaders</option>
+              <option value="">{t.home.allLoaders}</option>
               <option value="vanilla">Vanilla</option>
               <option value="fabric">Fabric</option>
               <option value="forge">Forge</option>
@@ -1544,7 +1545,7 @@ function Library() {
               onChange={e => { setFilterVersion(e.target.value); setCarouselPage(0) }}
               style={{ color: filterVersion ? 'var(--ink)' : 'var(--ink-4)' }}
             >
-              <option value="">All versions</option>
+              <option value="">{t.home.allVersions}</option>
               {allVersions.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
@@ -1587,7 +1588,7 @@ function Library() {
                 ) : (
                   <>
                     <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/></svg>
-                    Select
+                    {t.home.selectBtn}
                   </>
                 )}
               </button>
@@ -1616,9 +1617,9 @@ function Library() {
               <Button
                 variant="secondary"
                 onClick={() => setSyncOpen(true)}
-                title="Sync instances from other launchers"
+                title={t.home.syncTip}
               >
-                ⇄ Sync
+                ⇄ {t.home.syncBtn}
               </Button>
               <Button
                 variant="primary"
@@ -1793,7 +1794,7 @@ function Library() {
                                   onDropJar={async (path) => {
                                     try {
                                       await api.mods.installLocal(inst.id, path)
-                                      setJarToast(`Mod installed to "${inst.name}"`)
+                                      setJarToast(t.home.modInstalledTo(inst.name))
                                     } catch (e) {
                                       setJarToast(`Install failed: ${e instanceof Error ? e.message : String(e)}`)
                                     }
@@ -1857,7 +1858,7 @@ function Library() {
                   onDropJar={async (path) => {
                     try {
                       await api.mods.installLocal(inst.id, path)
-                      setJarToast(`Mod installed to "${inst.name}"`)
+                      setJarToast(t.home.modInstalledTo(inst.name))
                     } catch (e) {
                       setJarToast(`Install failed: ${e instanceof Error ? e.message : String(e)}`)
                     }
@@ -1936,7 +1937,7 @@ function Library() {
         onOpenChange={setCreateOpen}
         onCreate={async (input) => {
           const inst = await createInstance.mutateAsync(input)
-          void recordActivity(`Created instance "${inst.name}"`)
+          void recordActivity(t.home.activityCreated(inst.name))
         }}
         onImportFile={handleImportFile}
         onImportMultiMc={async () => {
@@ -1944,10 +1945,10 @@ function Library() {
             const inst = await api.instance.importMultiMc()
             if (inst) {
               await queryClient.invalidateQueries({ queryKey: ['instances'] })
-              void recordActivity(`Imported "${inst.name}" from MultiMC/Prism`)
+              void recordActivity(t.home.activityImportedMmc(inst.name))
             }
           } catch (e) {
-            setLaunchToast(e instanceof Error ? e.message : 'Import failed')
+            setLaunchToast(e instanceof Error ? e.message : t.home.importFailedShort)
           }
         }}
       />
@@ -1958,13 +1959,13 @@ function Library() {
         onOpenChange={(v) => { if (!v) setEditTarget(null) }}
         onSave={async (id, patch) => {
           const inst = await updateInstance.mutateAsync({ id, patch })
-          void recordActivity(`Edited "${inst.name}"`)
+          void recordActivity(t.home.activityEdited(inst.name))
         }}
         onDelete={async (id) => {
           const inst = instances.find(i => i.id === id)
           await deleteInstance.mutateAsync(id)
           setEditTarget(null)
-          if (inst) void recordActivity(`Deleted "${inst.name}"`)
+          if (inst) void recordActivity(t.home.activityDeleted(inst.name))
         }}
         onRepair={(id) => {
           const inst = instances.find(i => i.id === id)
@@ -1973,7 +1974,7 @@ function Library() {
           setInstalling({ instanceId: id, name: inst.name })
           api.mc.repair(id).catch((e: unknown) => {
             setInstalling(null)
-            setLaunchToast(`Repair failed: ${e instanceof Error ? e.message : 'Unknown error'}`)
+            setLaunchToast(t.home.repairFailed(e instanceof Error ? e.message : t.home.unknownError))
             setTimeout(() => setLaunchToast(null), 4000)
           })
         }}
@@ -1981,7 +1982,7 @@ function Library() {
           const inst = instances.find(i => i.id === id)
           await api.instance.duplicate(id)
           void queryClient.invalidateQueries({ queryKey: ['instances'] })
-          if (inst) void recordActivity(`Duplicated "${inst.name}"`)
+          if (inst) void recordActivity(t.home.activityDuplicated(inst.name))
         }}
       />
 
@@ -2001,12 +2002,12 @@ function Library() {
       {javaPrep && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-floating)', padding: '28px 32px', width: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)', letterSpacing: '.04em' }}>Setting up Java</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)', letterSpacing: '.04em' }}>{t.home.settingUpJava}</div>
             <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{javaPrep.step}</div>
             <div style={{ height: 8, background: 'var(--surface-2)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius-max)', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${javaPrep.percent}%`, background: 'var(--accent)', transition: 'width 200ms linear' }} />
             </div>
-            <div style={{ fontSize: 11, color: 'var(--ink-4)', lineHeight: 1.4 }}>A one-time Java runtime download for this Minecraft version.</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-4)', lineHeight: 1.4 }}>{t.home.javaDownloadNote}</div>
           </div>
         </div>
       )}
@@ -2017,13 +2018,13 @@ function Library() {
           instanceName={installing.name}
           onDone={() => {
             setInstalling(null)
-            void recordActivity(`Installed MC for "${installing.name}"`)
+            void recordActivity(t.home.activityInstalledMc(installing.name))
             void queryClient.invalidateQueries({ queryKey: ['instances'] })
           }}
           onError={(err) => {
             setInstalling(null)
             if (!err.toLowerCase().includes('cancel')) {
-              setLaunchToast(`Install failed: ${err}`)
+              setLaunchToast(t.home.installFailedWith(err))
               setTimeout(() => setLaunchToast(null), 4000)
             }
           }}
@@ -2038,7 +2039,7 @@ function Library() {
             <div style={{ background:'var(--surface-2)', borderRadius:'var(--radius)', padding:'14px 16px', display:'flex', flexDirection:'column', gap:10 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
                 <div style={{ fontSize:13, fontWeight:700, color:tone, letterSpacing:'.02em' }}>
-                  {fileImport.status === 'done' ? 'Import complete' : fileImport.status === 'error' ? 'Import failed' : t.home.importingModpack}
+                  {fileImport.status === 'done' ? t.home.importComplete : fileImport.status === 'error' ? t.home.importFailedShort : t.home.importingModpack}
                 </div>
                 <span style={{ fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize:12, color:tone }}>{Math.round(fileImport.percent)}%</span>
               </div>
@@ -2053,21 +2054,21 @@ function Library() {
                 <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
                   {fileImport.status === 'done' && fileImport.instanceId && (
                     <Button variant="secondary" size="sm" onClick={() => { void api.instance.openFolder(fileImport.instanceId!) }}>
-                      Open folder
+                      {t.home.openFolder}
                     </Button>
                   )}
                   {fileImport.status === 'done' && imported && (
                     <Button variant="primary" size="sm" onClick={() => { setFileImport(null); void handleLaunch(imported) }}>
-                      Play
+                      {t.home.playShort}
                     </Button>
                   )}
                   {fileImport.status === 'error' && (
                     <Button variant="secondary" size="sm" onClick={() => { void handleImportFile(fileImport.filePath) }}>
-                      Retry
+                      {t.home.retry}
                     </Button>
                   )}
                   <Button variant="ghost" size="sm" onClick={() => setFileImport(null)}>
-                    Dismiss
+                    {t.home.dismiss}
                   </Button>
                 </div>
               )}
@@ -2220,13 +2221,13 @@ function Library() {
           onLink={async (ext) => {
             const inst = await api.instance.linkExternal(ext)
             await queryClient.invalidateQueries({ queryKey: ['instances'] })
-            void recordActivity(`Linked "${inst.name}" from ${ext.sourceName}`)
+            void recordActivity(t.home.activityLinked(inst.name, ext.sourceName))
             return inst
           }}
           onImport={async (ext) => {
             const inst = await api.instance.importExternal(ext)
             await queryClient.invalidateQueries({ queryKey: ['instances'] })
-            void recordActivity(`Imported "${inst.name}" from ${ext.sourceName}`)
+            void recordActivity(t.home.activityImportedExt(inst.name, ext.sourceName))
             return inst
           }}
         />
@@ -2484,7 +2485,7 @@ function WhatsNewPanel({ entries }: { entries: ChangelogEntry[] }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {latest.date && <span style={{ fontSize: 10, color: 'var(--ink-4)', whiteSpace: 'nowrap' }}>{latest.date}</span>}
-                <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{openVersion === latest.version ? 'Collapse' : 'Read'}</span>
+                <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{openVersion === latest.version ? t.home.collapse : t.home.readMore}</span>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 9 }}>
@@ -2525,7 +2526,7 @@ function WhatsNewPanel({ entries }: { entries: ChangelogEntry[] }) {
                     <span style={{ fontSize: 11, color: 'var(--ink-4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.notes[0]}
                     </span>
-                    <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{openVersion === item.version ? 'Less' : 'Read'}</span>
+                    <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{openVersion === item.version ? t.home.less : t.home.readMore}</span>
                   </div>
                   {openVersion === item.version && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 7, paddingLeft: 66 }}>
@@ -2629,7 +2630,7 @@ function PlaytimePanel({ instances }: { instances: Instance[] }) {
   }
 
   return (
-    <Panel title={t.home.playtime} meta={`${activeDays}/7 active days`}>
+    <Panel title={t.home.playtime} meta={t.home.activeDays(activeDays)}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr auto',
@@ -2645,7 +2646,7 @@ function PlaytimePanel({ instances }: { instances: Instance[] }) {
             {fmtSeconds(grandTotal)}
           </div>
           <div style={{ marginTop: 4, fontSize: 11, color: 'var(--ink-4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {t.home.playtimeTotal}{topInstance ? `, led by ${topInstance.name}` : ''}
+            {t.home.playtimeTotal}{topInstance ? t.home.ledBy(topInstance.name) : ''}
           </div>
         </div>
         {streak > 0 && (

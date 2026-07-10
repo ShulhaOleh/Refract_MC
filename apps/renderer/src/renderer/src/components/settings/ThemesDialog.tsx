@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/Button'
+import { useT } from '@/i18n'
 import { useThemeStore } from '@/stores/theme'
 import { api, supportsFilePicker } from '@/lib/api'
 import type { ThemeColors, ThemeDefinition } from '@/lib/theme-types'
@@ -13,22 +14,38 @@ interface Props {
 }
 
 // Editable colours, in a sensible visual order. `radius` is handled separately
-// (it's a length, not a colour).
-const COLOR_FIELDS: Array<{ key: keyof ThemeColors; label: string }> = [
-  { key: 'accent', label: 'Accent' },
-  { key: 'accent-hover', label: 'Accent hover' },
-  { key: 'accent-fg', label: 'Accent text' },
-  { key: 'bg-base', label: 'Background' },
-  { key: 'bg-surface', label: 'Surface' },
-  { key: 'bg-overlay', label: 'Overlay' },
-  { key: 'bg-hover', label: 'Hover' },
-  { key: 'text-primary', label: 'Text' },
-  { key: 'text-secondary', label: 'Text muted' },
-  { key: 'text-muted', label: 'Text faint' },
-  { key: 'border', label: 'Border' },
-  { key: 'success', label: 'Success' },
-  { key: 'warning', label: 'Warning' },
-  { key: 'error', label: 'Error' },
+// (it's a length, not a colour). Labels are locale keys resolved at render time.
+type ColorLabelKey =
+  | 'colorAccent'
+  | 'colorAccentHover'
+  | 'colorAccentText'
+  | 'colorBackground'
+  | 'colorSurface'
+  | 'colorOverlay'
+  | 'colorHover'
+  | 'colorText'
+  | 'colorTextMuted'
+  | 'colorTextFaint'
+  | 'colorBorder'
+  | 'colorSuccess'
+  | 'colorWarning'
+  | 'colorError'
+
+const COLOR_FIELDS: Array<{ key: keyof ThemeColors; labelKey: ColorLabelKey }> = [
+  { key: 'accent', labelKey: 'colorAccent' },
+  { key: 'accent-hover', labelKey: 'colorAccentHover' },
+  { key: 'accent-fg', labelKey: 'colorAccentText' },
+  { key: 'bg-base', labelKey: 'colorBackground' },
+  { key: 'bg-surface', labelKey: 'colorSurface' },
+  { key: 'bg-overlay', labelKey: 'colorOverlay' },
+  { key: 'bg-hover', labelKey: 'colorHover' },
+  { key: 'text-primary', labelKey: 'colorText' },
+  { key: 'text-secondary', labelKey: 'colorTextMuted' },
+  { key: 'text-muted', labelKey: 'colorTextFaint' },
+  { key: 'border', labelKey: 'colorBorder' },
+  { key: 'success', labelKey: 'colorSuccess' },
+  { key: 'warning', labelKey: 'colorWarning' },
+  { key: 'error', labelKey: 'colorError' },
 ]
 
 const SWATCH_KEYS: Array<keyof ThemeColors> = ['accent', 'bg-base', 'bg-surface', 'text-primary']
@@ -49,6 +66,7 @@ function sliderStyle(value: number, min: number, max: number): CSSProperties {
 }
 
 export function ThemesDialog({ open, onOpenChange }: Props) {
+  const t = useT()
   const activeThemeId = useThemeStore((s) => s.activeThemeId)
   const activeTheme = useThemeStore((s) => s.activeTheme)
   const customThemes = useThemeStore((s) => s.customThemes)
@@ -62,7 +80,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
 
   const [creating, setCreating] = useState(false)
   const [editingThemeId, setEditingThemeId] = useState<string | null>(null)
-  const [draftName, setDraftName] = useState('My Theme')
+  const [draftName, setDraftName] = useState(t.themes.defaultName)
   const [draftColors, setDraftColors] = useState<ThemeColors>(() => ({ ...activeTheme.colors }))
   const [draftBackgroundImage, setDraftBackgroundImage] = useState(activeTheme.backgroundImage ?? '')
   const [draftBackgroundOpacity, setDraftBackgroundOpacity] = useState(activeTheme.backgroundOpacity ?? 0.34)
@@ -96,7 +114,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
 
   function startCreate() {
     setEditingThemeId(null)
-    loadDraft(activeTheme, 'My Theme')
+    loadDraft(activeTheme, t.themes.defaultName)
     setCreating(true)
   }
 
@@ -128,8 +146,8 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
     const id = editingThemeId ?? slugify(draftName)
     const theme: ThemeDefinition = {
       id,
-      name: draftName.trim() || 'My Theme',
-      author: 'You',
+      name: draftName.trim() || t.themes.defaultName,
+      author: t.themes.authorYou,
       version: '1.0.0',
       colors: draftColors,
       disableGradients: draftDisableGradients,
@@ -159,17 +177,17 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
         <div className="theme-card-head">
           <span className="theme-card-title">{theme.name}</span>
           <span className="theme-card-controls">
-            {active && <span className="theme-active-pill">ACTIVE</span>}
+            {active && <span className="theme-active-pill">{t.themes.active}</span>}
             {!builtin && (
               <span
                 role="button"
                 tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); startEdit(theme) }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); startEdit(theme) } }}
-                title="Edit theme"
+                title={t.themes.editTip}
                 className="theme-card-action theme-card-edit"
               >
-                EDIT
+                {t.themes.edit}
               </span>
             )}
             {!builtin && (
@@ -178,7 +196,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
                 tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); removeCustomTheme(theme.id) }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); removeCustomTheme(theme.id) } }}
-                title="Delete theme"
+                title={t.themes.deleteTip}
                 className="theme-card-action theme-card-delete"
               >
                 ×
@@ -204,7 +222,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
             tabIndex={0}
             onClick={(e) => { e.stopPropagation(); removeCustomTheme(theme.id) }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); removeCustomTheme(theme.id) } }}
-            title="Delete theme"
+            title={t.themes.deleteTip}
             className="theme-card-action theme-card-delete"
           >
             ×
@@ -218,16 +236,16 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
     <Dialog.Root open={open} onOpenChange={(v) => { if (!v) { setCreating(false); setEditingThemeId(null) } onOpenChange(v) }}>
       <Dialog.Portal>
         <Dialog.Overlay className="theme-overlay" />
-        <Dialog.Content aria-label="Themes" className="ni-dialog theme-dialog">
+        <Dialog.Content aria-label={t.themes.title} className="ni-dialog theme-dialog">
           <div className="theme-dialog-scroll">
             <div className="theme-dialog-header">
               <div>
-                <Dialog.Title className="theme-dialog-title">Themes</Dialog.Title>
+                <Dialog.Title className="theme-dialog-title">{t.themes.title}</Dialog.Title>
                 <Dialog.Description className="theme-dialog-subtitle">
-                  Pick a built-in style or build a custom launcher theme.
+                  {t.themes.subtitle}
                 </Dialog.Description>
               </div>
-              {!creating && <Button size="sm" onClick={startCreate}>Create theme</Button>}
+              {!creating && <Button size="sm" onClick={startCreate}>{t.themes.create}</Button>}
             </div>
 
             {!creating ? (
@@ -238,7 +256,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
             ) : (
               <div className="theme-editor">
                 <label className="theme-field">
-                  <span className="theme-field-label">Theme name</span>
+                  <span className="theme-field-label">{t.themes.name}</span>
                   <input
                     className="ni-input"
                     value={draftName}
@@ -247,7 +265,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
                 </label>
 
                 <div className="theme-color-grid">
-                  {COLOR_FIELDS.map(({ key, label }) => (
+                  {COLOR_FIELDS.map(({ key, labelKey }) => (
                     <label key={key} className="theme-color-field">
                       <input
                         className="theme-color-input"
@@ -256,12 +274,12 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
                         onChange={(e) => setDraftColors((c) => ({ ...c, [key]: e.target.value }))}
                       />
                       <span className="theme-color-chip" style={{ background: draftColors[key] }} />
-                      <span className="theme-color-name">{label}</span>
+                      <span className="theme-color-name">{t.themes[labelKey]}</span>
                       <span className="theme-color-value">{draftColors[key]}</span>
                     </label>
                   ))}
                   <label className="theme-radius-field">
-                    <span className="theme-field-label">Corner radius</span>
+                    <span className="theme-field-label">{t.themes.cornerRadius}</span>
                     <input
                       className="ni-input"
                       type="number"
@@ -280,18 +298,18 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
                     onChange={(e) => setDraftDisableGradients(e.target.checked)}
                   />
                   <span>
-                    <b>Disable gradients</b>
-                    <small>Use flat theme colors across panels, buttons, sidebar, and page backgrounds.</small>
+                    <b>{t.themes.disableGradients}</b>
+                    <small>{t.themes.disableGradientsDesc}</small>
                   </span>
                 </label>
 
                 <div className="theme-bg-panel">
                   <div className="theme-bg-header">
                     <div>
-                      <div className="theme-section-title">Background image</div>
-                      <div className="theme-section-note">Use a local image or paste an image URL.</div>
+                      <div className="theme-section-title">{t.themes.bgImage}</div>
+                      <div className="theme-section-note">{t.themes.bgImageDesc}</div>
                     </div>
-                    <Button variant="secondary" size="sm" onClick={chooseBackgroundImage}>Choose image</Button>
+                    <Button variant="secondary" size="sm" onClick={chooseBackgroundImage}>{t.themes.chooseImage}</Button>
                     <input
                       ref={backgroundInputRef}
                       type="file"
@@ -308,7 +326,7 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
                     className="ni-input"
                     value={draftBackgroundImage}
                     onChange={(e) => setDraftBackgroundImage(e.target.value)}
-                    placeholder="https://example.com/background.jpg"
+                    placeholder={t.themes.urlPlaceholder}
                   />
 
                   {draftBackgroundImage && (
@@ -322,44 +340,44 @@ export function ThemesDialog({ open, onOpenChange }: Props) {
                       } as CSSProperties}
                     >
                       <div className="theme-bg-preview-card">
-                        <div className="theme-bg-preview-title">Preview</div>
-                        <div className="theme-bg-preview-note">Text stays readable over image.</div>
+                        <div className="theme-bg-preview-title">{t.themes.preview}</div>
+                        <div className="theme-bg-preview-note">{t.themes.previewNote}</div>
                       </div>
                     </div>
                   )}
 
                   <div className="theme-slider-grid">
                     <label className="theme-slider-field">
-                      <span>Image opacity <b>{Math.round(draftBackgroundOpacity * 100)}%</b></span>
+                      <span>{t.themes.imageOpacity(Math.round(draftBackgroundOpacity * 100))}</span>
                       <input className="ni-slider" style={sliderStyle(draftBackgroundOpacity, 0.1, 0.8)} type="range" min={0.1} max={0.8} step={0.05} value={draftBackgroundOpacity} onChange={(e) => setDraftBackgroundOpacity(Number(e.target.value))} />
                     </label>
                     <label className="theme-slider-field">
-                      <span>Background dim <b>{Math.round(draftBackgroundDim * 100)}%</b></span>
+                      <span>{t.themes.backgroundDim(Math.round(draftBackgroundDim * 100))}</span>
                       <input className="ni-slider" style={sliderStyle(draftBackgroundDim, 0.15, 0.75)} type="range" min={0.15} max={0.75} step={0.05} value={draftBackgroundDim} onChange={(e) => setDraftBackgroundDim(Number(e.target.value))} />
                     </label>
                     <label className="theme-slider-field">
-                      <span>Blur <b>{draftBackgroundBlur}px</b></span>
+                      <span>{t.themes.blur(draftBackgroundBlur)}</span>
                       <input className="ni-slider" style={sliderStyle(draftBackgroundBlur, 0, 16)} type="range" min={0} max={16} step={1} value={draftBackgroundBlur} onChange={(e) => setDraftBackgroundBlur(Number(e.target.value))} />
                     </label>
                   </div>
 
                   {draftBackgroundImage && (
                     <div className="theme-bg-remove">
-                      <Button variant="ghost" size="sm" onClick={() => setDraftBackgroundImage('')}>Remove image</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setDraftBackgroundImage('')}>{t.themes.removeImage}</Button>
                     </div>
                   )}
                 </div>
 
                 <div className="theme-footer-actions">
-                  <Button variant="outline" size="sm" onClick={() => { setCreating(false); setEditingThemeId(null) }}>Cancel</Button>
-                  <Button size="sm" onClick={saveDraft}>{editingThemeId ? 'Save changes' : 'Create & apply'}</Button>
+                  <Button variant="outline" size="sm" onClick={() => { setCreating(false); setEditingThemeId(null) }}>{t.themes.cancel}</Button>
+                  <Button size="sm" onClick={saveDraft}>{editingThemeId ? t.themes.saveChanges : t.themes.createApply}</Button>
                 </div>
               </div>
             )}
 
             {!creating && (
               <div className="theme-footer-actions">
-                <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Done</Button>
+                <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t.themes.done}</Button>
               </div>
             )}
           </div>

@@ -17,6 +17,8 @@ const LOADERS: Array<{ value: ModLoader | ''; label: string }> = [
 
 const ALL_PRESETS = [1, 2, 4, 8, 16, 32, 64]
 
+type T = ReturnType<typeof useT>
+
 interface Template {
   id: string
   label: string
@@ -28,13 +30,18 @@ interface Template {
   mcVersion?: string  // undefined = keep current / use latest
 }
 
-const TEMPLATES: Template[] = [
-  { id: 'vanilla',    label: 'Vanilla',      mark: '#55d88a', desc: 'Latest vanilla',            loader: '',         memGB: 2, javaArgs: '' },
-  { id: 'fabric',     label: 'Fabric',       mark: '#62c9ff', desc: 'Latest + Fabric loader',     loader: 'fabric',   memGB: 4, javaArgs: '' },
-  { id: 'neoforge',   label: 'NeoForge',     mark: '#b79cff', desc: 'Latest + NeoForge loader',   loader: 'neoforge', memGB: 4, javaArgs: '' },
-  { id: 'perf',       label: 'Performance',  mark: '#f4bf4d', desc: 'Fabric + Aikar\'s JVM flags', loader: 'fabric',   memGB: 6, javaArgs: '-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -XX:+DisableExplicitGC' },
-  { id: 'pvp',        label: '1.8.9 PvP',    mark: '#ff706d', desc: 'Classic PvP',                loader: '',         memGB: 2, javaArgs: '', mcVersion: '1.8.9' },
-  { id: 'speedrun',   label: 'Speedrun',     mark: '#ffffff', desc: 'Lightweight, fast startup',   loader: '',         memGB: 2, javaArgs: '-XX:+UseSerialGC -XX:TieredStopAtLevel=1' },
+interface TemplateDef extends Omit<Template, 'label' | 'desc'> {
+  label: (t: T) => string
+  desc: (t: T) => string
+}
+
+const TEMPLATE_DEFS: TemplateDef[] = [
+  { id: 'vanilla',    label: () => 'Vanilla',                  mark: '#55d88a', desc: t => t.createInst.tplVanillaDesc,     loader: '',         memGB: 2, javaArgs: '' },
+  { id: 'fabric',     label: () => 'Fabric',                   mark: '#62c9ff', desc: t => t.createInst.tplFabricDesc,      loader: 'fabric',   memGB: 4, javaArgs: '' },
+  { id: 'neoforge',   label: () => 'NeoForge',                 mark: '#b79cff', desc: t => t.createInst.tplNeoforgeDesc,    loader: 'neoforge', memGB: 4, javaArgs: '' },
+  { id: 'perf',       label: t => t.createInst.tplPerformance, mark: '#f4bf4d', desc: t => t.createInst.tplPerformanceDesc, loader: 'fabric',   memGB: 6, javaArgs: '-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -XX:+DisableExplicitGC' },
+  { id: 'pvp',        label: t => t.createInst.tplPvp,         mark: '#ff706d', desc: t => t.createInst.tplPvpDesc,         loader: '',         memGB: 2, javaArgs: '', mcVersion: '1.8.9' },
+  { id: 'speedrun',   label: t => t.createInst.tplSpeedrun,    mark: '#ffffff', desc: t => t.createInst.tplSpeedrunDesc,    loader: '',         memGB: 2, javaArgs: '-XX:+UseSerialGC -XX:TieredStopAtLevel=1' },
 ]
 
 interface CreateInput {
@@ -58,11 +65,16 @@ interface Props {
 
 export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFile, onImportMultiMc }: Props) {
   const t = useT()
+  const templates: Template[] = TEMPLATE_DEFS.map(({ label, desc, ...template }) => ({
+    ...template,
+    label: label(t),
+    desc: desc(t),
+  }))
   const nameId = useId()
   const verId  = useId()
   const grpId  = useId()
 
-  const [name, setName]               = useState('My Instance')
+  const [name, setName]               = useState(t.createInst.defaultName)
   const [mcVersion, setMcVersion]     = useState('1.21.1')
   const [showSnapshots, setSnap]      = useState(false)
   const [modLoader, setModLoader]     = useState<ModLoader | ''>('')
@@ -109,11 +121,11 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
     setMemGB(Math.min(tpl.memGB, maxRamGb))
     if (tpl.javaArgs) {/* JVM args not in CreateInput but could extend; skip for now */}
     if (tpl.mcVersion) setMcVersion(tpl.mcVersion)
-    if (!name || name === 'My Instance') setName(tpl.label + ' Instance')
+    if (!name || name === t.createInst.defaultName) setName(t.createInst.nameSuffix(tpl.label))
   }
 
   function reset() {
-    setName('My Instance'); setMcVersion('1.21.1'); setSnap(false)
+    setName(t.createInst.defaultName); setMcVersion('1.21.1'); setSnap(false)
     setModLoader(''); setLoaderVersion(''); setLoaderVersions([]); setLoaderVersionRecommended(undefined)
     setMemGB(2); setGroupId(''); setActiveTemplate(null)
   }
@@ -132,7 +144,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
 
   const fillPct = ((memGB - 1) / (maxRamGb - 1)) * 100
   const memPresets = ALL_PRESETS.filter(g => g <= maxRamGb)
-  const displayName = name.trim() || 'My Instance'
+  const displayName = name.trim() || t.createInst.defaultName
   const loaderLabel = LOADERS.find(l => l.value === modLoader)?.label ?? 'Vanilla'
 
   const IrisLogo = () => (
@@ -153,7 +165,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
       <Dialog.Portal>
         <Dialog.Overlay style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 149 }} />
         <Dialog.Content
-          aria-label="New instance"
+          aria-label={t.createInst.heading}
           className="ni-dialog"
           onEscapeKeyDown={close}
           onPointerDownOutside={close}
@@ -162,12 +174,12 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
           <div className="ni-dialog-header" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '20px 22px', borderBottom: '1px solid var(--border-r)', background: 'linear-gradient(var(--surface-2), var(--surface))', flexShrink: 0 }}>
             <IrisLogo />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 850, letterSpacing: '-.02em', lineHeight: 1, color: 'var(--ink)' }}>New Instance</h2>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 850, letterSpacing: '-.02em', lineHeight: 1, color: 'var(--ink)' }}>{t.createInst.heading}</h2>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', color: 'var(--ink-3)', textTransform: 'uppercase' }}>
-                Configure launch profile
+                {t.createInst.subheading}
               </span>
             </div>
-            <button className="ni-close" onClick={close} aria-label="Close" type="button">
+            <button className="ni-close" onClick={close} aria-label={t.createInst.close} type="button">
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round">
                 <path d="M6 6l12 12M18 6L6 18"/>
               </svg>
@@ -180,7 +192,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
             {/* Left: live preview */}
             <aside className="ni-preview" style={{ padding: '22px 20px', background: 'var(--surface-2)', borderRight: '1px solid var(--border-r)', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
               <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-4)' }}>
-                Live Preview
+                {t.createInst.livePreview}
               </div>
 
               {/* Preview card */}
@@ -199,21 +211,21 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
                 {/* Card body */}
                 <div style={{ padding: '13px 14px 15px', display: 'flex', flexDirection: 'column', gap: 9 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-                  <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11.5, color: 'var(--ink-3)', letterSpacing: '.02em' }}>Minecraft {mcVersion}</div>
+                  <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11.5, color: 'var(--ink-3)', letterSpacing: '.02em' }}>{t.createInst.mcVersionLine(mcVersion)}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ni-p-deep, var(--accent-hi))', background: 'var(--ni-p-tint, var(--accent-tint))', border: '1px solid var(--ni-p-tint-2, var(--accent-tint))', borderRadius: 'var(--radius-sm)', padding: '3px 8px' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
                       {loaderLabel}
                     </span>
                     <span style={{ marginLeft: 'auto', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, color: 'var(--ink-3)', border: '1px solid var(--border-r)', borderRadius: 'var(--radius-sm)', padding: '3px 8px', background: 'var(--bg)' }}>
-                      {memGB} GB
+                      {t.createInst.gbChip(memGB)}
                     </span>
                   </div>
                 </div>
               </div>
 
               <p style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.5, margin: 0 }}>
-                This is how <strong style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{displayName}</strong> will appear in your library. Java is installed automatically.
+                {t.createInst.previewHelp(displayName)}
               </p>
             </aside>
 
@@ -222,9 +234,9 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
 
               {/* Templates */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Start from template</label>
+                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>{t.createInst.startFromTemplate}</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {TEMPLATES.map(tpl => (
+                  {templates.map(tpl => (
                     <Button
                       key={tpl.id}
                       variant="outline"
@@ -252,21 +264,21 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
               {/* Name */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <label htmlFor={nameId} style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Instance name</label>
+                  <label htmlFor={nameId} style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>{t.createInst.name}</label>
                 </div>
-                <input id={nameId} className="ni-input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="My Instance" autoFocus autoComplete="off" spellCheck={false} />
+                <input id={nameId} className="ni-input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t.createInst.defaultName} autoFocus autoComplete="off" spellCheck={false} />
               </div>
 
               {/* Version */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <label htmlFor={verId} style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Minecraft version</label>
+                  <label htmlFor={verId} style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>{t.createInst.mcVersion}</label>
                   <label className="ni-check">
                     <input className="ni-check-input" type="checkbox" checked={showSnapshots} onChange={e => setSnap(e.target.checked)} />
                     <span className="ni-checkmark-box">
                       <svg className="ni-checkmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 5 5 9-11"/></svg>
                     </span>
-                    <span className="ni-check-label">Snapshots</span>
+                    <span className="ni-check-label">{t.createInst.snapshots}</span>
                   </label>
                 </div>
                 <div style={{ position: 'relative' }}>
@@ -286,7 +298,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
 
               {/* Mod loader */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Mod loader</label>
+                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>{t.createInst.modLoader}</label>
                 <div className="ni-seg">
                   {LOADERS.map(l => (
                     <button
@@ -307,7 +319,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
               {(modLoader === 'fabric' || modLoader === 'quilt' || modLoader === 'forge' || modLoader === 'neoforge') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
-                    {modLoader === 'neoforge' ? 'NeoForge' : modLoader === 'fabric' ? 'Fabric' : modLoader === 'quilt' ? 'Quilt' : 'Forge'} version
+                    {t.createInst.loaderVersion(modLoader === 'neoforge' ? 'NeoForge' : modLoader === 'fabric' ? 'Fabric' : modLoader === 'quilt' ? 'Quilt' : 'Forge')}
                   </label>
                   <div style={{ position: 'relative' }}>
                     <select
@@ -316,10 +328,10 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
                       onChange={e => setLoaderVersion(e.target.value)}
                       disabled={loaderVersionsLoading}
                     >
-                      <option value="">{loaderVersionsLoading ? 'Loading…' : 'Latest (auto)'}</option>
+                      <option value="">{loaderVersionsLoading ? t.createInst.loadingList : t.createInst.latestAuto}</option>
                       {loaderVersions.map(v => (
                         <option key={v} value={v}>
-                          {v}{v === loaderVersionRecommended ? ' ★ recommended' : ''}
+                          {v}{v === loaderVersionRecommended ? t.createInst.recommendedStar : ''}
                         </option>
                       ))}
                     </select>
@@ -333,8 +345,8 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
               {/* Memory */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Memory</label>
-                  <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--ni-p-deep, var(--accent-hi))', fontWeight: 600 }}>{memGB} GB allocated</span>
+                  <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>{t.createInst.memoryLabel}</label>
+                  <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--ni-p-deep, var(--accent-hi))', fontWeight: 600 }}>{t.createInst.memAllocated(memGB)}</span>
                 </div>
                 <input
                   className="ni-slider"
@@ -346,7 +358,7 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
                 <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 3 }}>
                   {memPresets.map(g => (
                     <button key={g} type="button" className="ni-preset" aria-pressed={memGB === g ? 'true' : 'false'} onClick={() => setMemGB(g)}>
-                      {g}G
+                      {t.createInst.gigShort(g)}
                     </button>
                   ))}
                 </div>
@@ -355,9 +367,9 @@ export function CreateInstanceDialog({ open, onOpenChange, onCreate, onImportFil
               {/* Group */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label htmlFor={grpId} style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.10em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
-                  Group{' '}<span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--ink-4)', fontWeight: 500 }}>(optional)</span>
+                  {t.createInst.group}{' '}<span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--ink-4)', fontWeight: 500 }}>{t.createInst.optionalTag}</span>
                 </label>
-                <input id={grpId} className="ni-input" type="text" value={groupId} onChange={e => setGroupId(e.target.value)} placeholder="e.g. Modded, Vanilla, Survival…" autoComplete="off" />
+                <input id={grpId} className="ni-input" type="text" value={groupId} onChange={e => setGroupId(e.target.value)} placeholder={t.createInst.groupPlaceholder} autoComplete="off" />
               </div>
 
             </form>

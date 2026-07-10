@@ -5,6 +5,24 @@ import zhCNJson from '@locales/zh-CN.json'
 
 type Locale = typeof enJson
 
+function mergeLocale<T>(fallback: T, overrides: unknown): T {
+  if (Array.isArray(fallback)) {
+    return (Array.isArray(overrides) ? overrides : fallback) as T
+  }
+
+  if (fallback !== null && typeof fallback === 'object') {
+    const source = overrides !== null && typeof overrides === 'object'
+      ? overrides as Record<string, unknown>
+      : {}
+
+    return Object.fromEntries(
+      Object.entries(fallback).map(([key, value]) => [key, mergeLocale(value, source[key])]),
+    ) as T
+  }
+
+  return (typeof overrides === typeof fallback ? overrides : fallback) as T
+}
+
 /** Replace {{param}} placeholders with values from a params map. */
 function i(template: string, params: Record<string, string | number>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, k) => String(params[k] ?? k))
@@ -31,6 +49,28 @@ function build(l: Locale) {
       modCount:      (n: number)    => i(l.home.modCount, { n }),
       ramWarnBody:   (need: string, avail: string) => i(l.home.ramWarnBody, { need, avail }),
       offlineBody:   (name: string) => i(l.home.offlineBody, { name }),
+      exitCode:            (code: string | number) => i(l.home.exitCode, { code }),
+      errorLine:           (error: string)         => i(l.home.errorLine, { error }),
+      reportLine:          (file: string)          => i(l.home.reportLine, { file }),
+      updateFailed:        (error: string)         => i(l.home.updateFailed, { error }),
+      mcVersionNotFound:   (v: string)             => i(l.home.mcVersionNotFound, { v }),
+      installFailedWith:   (message: string)       => i(l.home.installFailedWith, { message }),
+      launchFailed:        (message: string)       => i(l.home.launchFailed, { message }),
+      crashedWith:         (error: string)         => i(l.home.crashedWith, { error }),
+      exitedWith:          (code: string | number) => i(l.home.exitedWith, { code }),
+      modInstalledTo:      (name: string)          => i(l.home.modInstalledTo, { name }),
+      repairFailed:        (message: string)       => i(l.home.repairFailed, { message }),
+      activeDays:          (n: number)             => i(l.home.activeDays, { n }),
+      ledBy:               (name: string)          => i(l.home.ledBy, { name }),
+      activityLaunched:    (name: string)          => i(l.home.activityLaunched, { name }),
+      activityCreated:     (name: string)          => i(l.home.activityCreated, { name }),
+      activityImportedMmc: (name: string)          => i(l.home.activityImportedMmc, { name }),
+      activityEdited:      (name: string)          => i(l.home.activityEdited, { name }),
+      activityDeleted:     (name: string)          => i(l.home.activityDeleted, { name }),
+      activityDuplicated:  (name: string)          => i(l.home.activityDuplicated, { name }),
+      activityInstalledMc: (name: string)          => i(l.home.activityInstalledMc, { name }),
+      activityLinked:      (name: string, source: string) => i(l.home.activityLinked, { name, source }),
+      activityImportedExt: (name: string, source: string) => i(l.home.activityImportedExt, { name, source }),
     },
 
     browse: {
@@ -39,6 +79,19 @@ function build(l: Locale) {
       forInstance:  (mcVer: string, loader: string)      => i(l.browse.forInstance, { mcVer, loader }),
       installingTo: (name: string)                       => i(l.browse.installingTo, { name }),
       updatedOn:    (d: string)                          => i(l.browse.updatedOn, { d }),
+      depsInstalling:  (name: string)   => i(l.browse.depsInstalling, { name }),
+      depsRequired:    (n: number)      => i(l.browse.depsRequired, { n }),
+      depsOptional:    (n: number)      => i(l.browse.depsOptional, { n }),
+      depsAlready:     (n: number)      => i(l.browse.depsAlready, { n }),
+      depsInstallPlus: (n: number)      => i(l.browse.depsInstallPlus, { n }),
+      searchFailed:    (message: string) => i(l.browse.searchFailed, { message }),
+      installedOk:     (name: string)   => i(l.browse.installedOk, { name }),
+      depsInstalledOk: (name: string, n: number) =>
+        i(n === 1 ? l.browse.depsInstalledOkOne : l.browse.depsInstalledOk, { name, n }),
+      cfUnavailable:   (error: string)  => i(l.browse.cfUnavailable, { error }),
+      inInstances:     (n: number)      => i(n === 1 ? l.browse.inInstancesOne : l.browse.inInstances, { n }),
+      incompatibleTip: (v: string)      => i(l.browse.incompatibleTip, { v }),
+      byAuthor:        (name: string)   => i(l.browse.byAuthor, { name }),
     },
 
     content: {
@@ -48,6 +101,21 @@ function build(l: Locale) {
       installingTo:     (name: string)             => i(l.content.installingTo, { name }),
       addLabel:         (label: string)            => i(l.content.addLabel, { label: label.toUpperCase() }),
       searchPlaceholder:(label: string)            => i(l.content.searchPlaceholder, { label: label.toLowerCase() }),
+      mcTag:              (v: string)       => i(l.content.mcTag, { v }),
+      alreadyInstalledAs: (name: string)    => i(l.content.alreadyInstalledAs, { name }),
+      installFailedWith:  (error: string)   => i(l.content.installFailedWith, { error }),
+      searchFailed:       (message: string) => i(l.content.searchFailed, { message }),
+      installedToInstance:(name: string)    => i(l.content.installedToInstance, { name }),
+      byAuthor:           (name: string)    => i(l.content.byAuthor, { name }),
+      updatedDate:        (date: string)    => i(l.content.updatedDate, { date }),
+      cfUnavailable:      (error: string)   => i(l.content.cfUnavailable, { error }),
+    },
+
+    themes: {
+      ...l.themes,
+      imageOpacity:  (p: number)  => i(l.themes.imageOpacity, { p }),
+      backgroundDim: (p: number)  => i(l.themes.backgroundDim, { p }),
+      blur:          (px: number) => i(l.themes.blur, { px }),
     },
 
     news: { ...l.news },
@@ -77,6 +145,13 @@ function build(l: Locale) {
       ram:    (mb: number)  => mb >= 1024
         ? i(l.createInst.ramGb, { gb: String(mb / 1024) })
         : i(l.createInst.ramMb, { mb }),
+      nameSuffix:    (label: string)  => i(l.createInst.nameSuffix, { label }),
+      mcVersionLine: (v: string)      => i(l.createInst.mcVersionLine, { v }),
+      gbChip:        (gb: number)     => i(l.createInst.gbChip, { gb }),
+      loaderVersion: (loader: string) => i(l.createInst.loaderVersion, { loader }),
+      memAllocated:  (gb: number)     => i(l.createInst.memAllocated, { gb }),
+      gigShort:      (g: number)      => i(l.createInst.gigShort, { g }),
+      previewHelp:   (name: string)   => i(l.createInst.previewHelp, { name }),
     },
 
     editInst: {
@@ -87,6 +162,11 @@ function build(l: Locale) {
         : i(l.editInst.ramMb, { mb }),
       javaVersion: (v: number, vendor: string) => i(l.editInst.javaVersion, { v, vendor }),
       optionsSyncDone: (files: string) => i(l.editInst.optionsSyncDone, { files }),
+      mcVersionLine: (v: string)      => i(l.editInst.mcVersionLine, { v }),
+      gbChip:        (gb: number)     => i(l.editInst.gbChip, { gb }),
+      loaderVersion: (loader: string) => i(l.editInst.loaderVersion, { loader }),
+      memAllocated:  (gb: number)     => i(l.editInst.memAllocated, { gb }),
+      gigShort:      (g: number)      => i(l.editInst.gigShort, { g }),
     },
 
     instanceDetail: {
@@ -115,12 +195,16 @@ function build(l: Locale) {
 
 export type T = ReturnType<typeof build>
 
-const locales: Record<string, Locale> = { en: enJson, uk: ukJson as unknown as Locale, 'zh-CN': zhCNJson as unknown as Locale }
+const locales: Record<string, Locale> = {
+  en: enJson,
+  uk: mergeLocale(enJson, ukJson),
+  'zh-CN': mergeLocale(enJson, zhCNJson),
+}
 
 export const translations: Record<string, T> = {
-  en: build(enJson),
-  uk: build(ukJson as unknown as Locale),
-  'zh-CN': build(zhCNJson as unknown as Locale),
+  en: build(locales.en),
+  uk: build(locales.uk),
+  'zh-CN': build(locales['zh-CN']),
 }
 
 export function useT(): T {
@@ -130,6 +214,7 @@ export function useT(): T {
 
 /** Register a new locale at runtime (for community translation bundles). */
 export function registerLocale(code: string, data: Locale): void {
-  locales[code] = data
-  translations[code] = build(data)
+  const locale = mergeLocale(enJson, data)
+  locales[code] = locale
+  translations[code] = build(locale)
 }

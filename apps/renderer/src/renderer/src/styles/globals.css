@@ -212,7 +212,8 @@ button:not(:disabled):hover {
 .btn-ghost { background: transparent; color: var(--ink-2); }
 .btn-ghost:not(:disabled):hover {
   filter: none;
-  background: rgba(255,255,255,.06);
+  /* ink-based tint so the hover shows on both dark and light themes */
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
   color: var(--ink);
 }
 
@@ -220,6 +221,61 @@ button:not(:disabled):hover {
 .btn-sm  { font-size: 12px; padding: 6px 10px; border-radius: var(--radius-sm); gap: var(--gap-xs); }
 .btn-lg  { font-size: 15px; padding: 11px 18px; }
 .btn-icon { padding: var(--gap-sm); aspect-ratio: 1 / 1; }
+
+/* Text-only link buttons (detail sidebars etc.) — underline on hover so they
+   read as interactive even without a background. */
+.link-btn:not(:disabled):hover { text-decoration: underline; }
+
+/* ── Lightbox gallery nav ────────────────────────────────────────────────── */
+.btn.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 26px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, .55);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: var(--radius-md);
+}
+.btn.lightbox-nav:not(:disabled):hover {
+  filter: none;
+  background: rgba(0, 0, 0, .8);
+  border-color: rgba(255, 255, 255, .4);
+  color: #fff;
+}
+/* ── Meta chip ───────────────────────────────────────────────────────────── */
+/* Small helper/status texts (results count, pagination, hint banners) sit
+   directly on the page background; the chip keeps them readable on custom
+   theme background images. */
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 4px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-r);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Gallery thumbnails (mod/modpack detail strips) ─────────────────────── */
+.gallery-thumb {
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-r);
+  height: 130px;
+  transition: border-color 120ms ease, filter 120ms ease;
+}
+.gallery-thumb:hover {
+  border-color: var(--accent);
+  filter: brightness(1.08);
+}
 
 /* ── Scrollbars ──────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 10px; }
