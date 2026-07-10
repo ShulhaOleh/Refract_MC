@@ -84,9 +84,15 @@ export function TitleBar() {
 
   const unread = entries.filter(e => e.ts > lastSeen).length
 
+  function startDragging(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.button !== 0 || (event.target as Element).closest('.no-drag-region')) return
+    api.window.startDragging()
+  }
+
   return (
     <div
       className="drag-region launcher-titlebar"
+      onMouseDown={startDragging}
       style={{
         gridRow: '1 / 2',
         gridColumn: '2 / 3',

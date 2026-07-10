@@ -5,8 +5,48 @@ import { Info, X } from 'lucide-react'
 import { TitleBar } from './TitleBar'
 import { Sidebar } from './Sidebar'
 import { StatusBar } from './StatusBar'
-import { api } from '@/lib/api'
+import { api, supportsWindowResizeDragging } from '@/lib/api'
 import { useT } from '@/i18n'
+
+type ResizeDirection = Parameters<typeof api.window.startResizeDragging>[0]
+
+const RESIZE_HANDLES: Array<{ direction: ResizeDirection; style: React.CSSProperties }> = [
+  { direction: 'North', style: { top: 0, left: 6, right: 6, height: 6, cursor: 'ns-resize' } },
+  { direction: 'South', style: { bottom: 0, left: 6, right: 6, height: 6, cursor: 'ns-resize' } },
+  { direction: 'West', style: { top: 6, bottom: 6, left: 0, width: 6, cursor: 'ew-resize' } },
+  { direction: 'East', style: { top: 6, bottom: 6, right: 0, width: 6, cursor: 'ew-resize' } },
+  { direction: 'NorthWest', style: { top: 0, left: 0, width: 10, height: 10, cursor: 'nwse-resize' } },
+  { direction: 'NorthEast', style: { top: 0, right: 0, width: 10, height: 10, cursor: 'nesw-resize' } },
+  { direction: 'SouthWest', style: { bottom: 0, left: 0, width: 10, height: 10, cursor: 'nesw-resize' } },
+  { direction: 'SouthEast', style: { bottom: 0, right: 0, width: 10, height: 10, cursor: 'nwse-resize' } },
+]
+
+function WindowResizeHandles() {
+  const [isMaximized, setIsMaximized] = useState(false)
+
+  useEffect(() => {
+    api.window.isMaximized().then(setIsMaximized).catch(() => {})
+    return api.window.onMaximizedChange(setIsMaximized)
+  }, [])
+
+  if (isMaximized) return null
+
+  return (
+    <div aria-hidden="true" className="window-resize-handles">
+      {RESIZE_HANDLES.map(({ direction, style }) => (
+        <div
+          key={direction}
+          onMouseDown={(event) => {
+            if (event.button !== 0) return
+            event.preventDefault()
+            api.window.startResizeDragging(direction)
+          }}
+          style={{ position: 'fixed', zIndex: 10000, ...style }}
+        />
+      ))}
+    </div>
+  )
+}
 
 function MigrationNotice120({ onDismiss }: { onDismiss: () => void }) {
   const t = useT()
@@ -107,6 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       position: 'relative',
       zIndex: 1,
     }}>
+      {supportsWindowResizeDragging && <WindowResizeHandles />}
       <div
         aria-hidden="true"
         className="chrome-top-fill"

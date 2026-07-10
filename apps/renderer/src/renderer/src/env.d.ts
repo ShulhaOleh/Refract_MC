@@ -208,6 +208,8 @@ declare global {
         maximize: () => void
         close: () => void
         forceClose: () => void
+        startDragging: () => void
+        startResizeDragging: (direction: 'East' | 'North' | 'NorthEast' | 'NorthWest' | 'South' | 'SouthEast' | 'SouthWest' | 'West') => void
         isMaximized: () => Promise<boolean>
         onMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void
       }
@@ -320,4 +322,3 @@ declare global {
     }
   }
 }
-

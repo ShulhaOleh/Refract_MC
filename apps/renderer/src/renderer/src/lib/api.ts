@@ -263,6 +263,8 @@ function createBrowserApi(): RefractAPI {
       maximize: () => undefined,
       close: () => undefined,
       forceClose: () => undefined,
+      startDragging: () => undefined,
+      startResizeDragging: () => undefined,
       isMaximized: async () => false,
       onMaximizedChange: () => () => undefined,
     },
@@ -1017,6 +1019,8 @@ function createTauriApi(): RefractAPI {
       // `destroy` was dropped from the desktop capability when it was hardened,
       // so route forceClose through the permitted graceful close() instead.
       forceClose: () => { void getCurrentWindow().close() },
+      startDragging: () => { void getCurrentWindow().startDragging() },
+      startResizeDragging: (direction) => { void getCurrentWindow().startResizeDragging(direction) },
       isMaximized: (() => getCurrentWindow().isMaximized()) as RefractAPI['window']['isMaximized'],
       onMaximizedChange: ((cb: (maximized: boolean) => void) => {
         let off: (() => void) | undefined
@@ -1079,6 +1083,9 @@ function createTauriApi(): RefractAPI {
 export const api: RefractAPI = wrapApi(
   isTauri ? createTauriApi() : createBrowserApi(),
 )
+
+/** True when the frameless shell needs renderer-provided resize handles. */
+export const supportsWindowResizeDragging = isTauri
 
 /** True when a native file picker is available. */
 export const supportsFilePicker = isTauri
