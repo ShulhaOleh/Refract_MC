@@ -296,7 +296,7 @@ button:not(:disabled):hover {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   background-image: var(--theme-bg-image, none);
   background-size: cover;
@@ -311,7 +311,7 @@ button:not(:disabled):hover {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   background:
     linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),

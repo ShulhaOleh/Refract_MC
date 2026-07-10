@@ -171,7 +171,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           // transform — a lingering transform makes this the containing block for
           // position:fixed modals, so they'd center on the scroller (off-screen,
           // scrollable) instead of the viewport.
-          style={{ flex:1, minHeight:0, overflowY:'auto', overflowX:'hidden', padding: showMigrationNotice ? '16px 28px 28px' : '24px 28px 28px', position:'relative', zIndex:1, animation:'page-enter 160ms ease-out backwards' }}
+          // No z-index here: it would make this a stacking context, trapping
+          // position:fixed modals rendered by routes below the sidebar (z 4).
+          style={{ flex:1, minHeight:0, overflowY:'auto', overflowX:'hidden', padding: showMigrationNotice ? '16px 28px 28px' : '24px 28px 28px', position:'relative', animation:'page-enter 160ms ease-out backwards' }}
         >
           {children}
         </div>
