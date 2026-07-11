@@ -952,7 +952,18 @@ function Browse() {
       .map(m => m.projectId))
   }
 
-  // When instance changes: apply filters, then layer update scan results over the saved install records.
+  // When the user switches to a different instance: apply its filters and jump
+  // back to page 1. Keyed on the id only — installs replace the instance object
+  // (new `mods` array) and must NOT reset the current page (#13).
+  useEffect(() => {
+    if (!activeInstance) return
+    setGameVersion(activeInstance.minecraftVersion)
+    setLoader(activeInstance.modLoader ? activeInstance.modLoader.toLowerCase() : 'All')
+    setOffset(0)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeInstance?.id])
+
+  // When the instance or its mods change: layer update scan results over the saved install records.
   useEffect(() => {
     let cancelled = false
     if (!activeInstance) {
@@ -960,9 +971,6 @@ function Browse() {
       setUpdateIds(new Set())
       return () => { cancelled = true }
     }
-    setGameVersion(activeInstance.minecraftVersion)
-    setLoader(activeInstance.modLoader ? activeInstance.modLoader.toLowerCase() : 'All')
-    setOffset(0)
 
     void (async () => {
       const savedIds = await savedModProjectIds(activeInstance)
@@ -1019,8 +1027,10 @@ function Browse() {
     if (searchRef.current) clearTimeout(searchRef.current)
     searchRef.current = setTimeout(() => doSearch(0), query ? 400 : 0)
     return () => { if (searchRef.current) clearTimeout(searchRef.current) }
+  // `suggested` is tracked by value (not object identity) so refreshing the
+  // instances list after an install doesn't re-trigger a page-1 search (#13).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, category, loader, gameVersion, sort, source, cfAvailable, suggested])
+  }, [query, category, loader, gameVersion, sort, source, cfAvailable, suggested?.version, suggested?.loader])
 
   async function doSearch(newOffset: number) {
     setLoading(true)
