@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.3.0
+### Playing
+
+* Added **Quick Play**, allowing you to launch directly into a server or world from the launcher.
+* Added desktop shortcuts that launch a specific world or server in one click.
+* Added **Play Offline** when Microsoft authentication servers are unavailable.
+* Added per-instance window size, fullscreen, and launch hook settings.
+* Added a warning when available system RAM is lower than the instance allocation.
+* Added game options synchronization between instances.
+
+### Instances & Content
+
+* Added instance exports in the Modrinth **`.mrpack`** format.
+* Added support for importing worlds from ZIP backups.
+* Improved archive instance imports with automatic layout, mod loader, and Minecraft version detection.
+* Added datapacks to content update checks.
+* Fixed incomplete CurseForge modpack installations that could leave files missing.
+* Added Java 25 detection.
+* Failed game launches are now written to the launcher log.
+
+### UI & Localization
+
+* Added a Simplified Chinese translation and expanded UI localization.
+* Replaced text-based loading states with skeleton loaders.
+* Added an optional pixel cat companion to the home screen.
+* Account sessions are now proactively validated on the accounts page.
+* Fixed dialogs being covered by the sidebar on smaller windows.
+
+### Linux
+
+* Fixed intermittent UI freezes by disabling the WebKitGTK DMA-BUF renderer.
+* Fixed the application opening in an extremely small window.
+* Restored frameless window controls.
+* The launcher now opens maximized on first launch across all platforms.
+
+### Other
+
+* Added one-line installation support through `install.config.json` using mget.
+* Release assets now include stable, version-independent filenames for permanent download URLs.
+* Added code-signing and notarization pipelines for Windows and macOS builds.
+* Reduced release binary sizes and improved performance using LTO and stripped symbols.
+
+
 ## 1.2.0
 - **Tauri desktop app** - Refract now ships as a Tauri app with the same app identity and the same launcher data folder, so existing instances, settings, themes, worlds, screenshots, options, and server lists carry over.
 - **Electron-to-Tauri migration** - old Electron installs can update through a one-time bridge that downloads and starts the new Tauri installer; future updates are handled by the Tauri updater.
